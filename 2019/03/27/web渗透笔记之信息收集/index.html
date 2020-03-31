@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="0x01 whois查询主要用于查询一些网站站长的邮箱，手机号等信息。可结合社会工程学生成字典爆破网站密码  站长之家  站长工具  kali的whois命令">
+<meta property="og:type" content="article">
+<meta property="og:title" content="web渗透笔记之信息收集">
+<meta property="og:url" content="http://yoursite.com/2019/03/27/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="0x01 whois查询主要用于查询一些网站站长的邮箱，手机号等信息。可结合社会工程学生成字典爆破网站密码  站长之家  站长工具  kali的whois命令">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/images/pasted-45.png">
+<meta property="article:published_time" content="2019-03-27T08:50:00.000Z">
+<meta property="article:modified_time" content="2019-08-12T11:48:01.204Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="渗透测试">
+<meta property="article:tag" content="信息收集">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/images/pasted-45.png">
+
+<link rel="canonical" href="http://yoursite.com/2019/03/27/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>web渗透笔记之信息收集 | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/03/27/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          web渗透笔记之信息收集
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-03-27 16:50:00" itemprop="dateCreated datePublished" datetime="2019-03-27T16:50:00+08:00">2019-03-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-08-12 19:48:01" itemprop="dateModified" datetime="2019-08-12T19:48:01+08:00">2019-08-12</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B8%97%E9%80%8F%E4%B9%8B%E8%B7%AF/" itemprop="url" rel="index"><span itemprop="name">渗透之路</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="0x01-whois查询"><a href="#0x01-whois查询" class="headerlink" title="0x01 whois查询"></a>0x01 whois查询</h2><p>主要用于查询一些网站站长的邮箱，手机号等信息。可结合社会工程学生成字典爆破网站密码</p>
+<ol>
+<li><p><a href="https://www.aizhan.com/" target="_blank" rel="noopener">站长之家</a></p>
+</li>
+<li><p><a href="http://tool.chinaz.com/" target="_blank" rel="noopener">站长工具</a></p>
+</li>
+<li><p>kali的whois命令</p>
+<a id="more"></a>
+<h2 id="0x02-cms指纹识别"><a href="#0x02-cms指纹识别" class="headerlink" title="0x02 cms指纹识别"></a>0x02 cms指纹识别</h2><p>找到网站的指纹信息，或许可让你更轻松的让你定位网站的漏洞。比如网站是dedecms的网站，这时可尝试在网上寻找对应版本的漏洞是否存在。一些开源的cms还可尝试进行代码审计，找到一些别人没有发现的漏洞</p>
+</li>
+<li><p>各种在线cms识别工具</p>
+</li>
+<li><p><a href="https://www.whatweb.net/" target="_blank" rel="noopener">whatweb</a></p>
+</li>
+<li><p><a href="http://whatweb.bugscaner.com/look/" target="_blank" rel="noopener">bugscan</a></p>
+</li>
+<li><p><a href="http://www.yunsee.cn/finger.html" target="_blank" rel="noopener">云悉</a> （推荐）</p>
+</li>
+<li><p><a href="http://finger.tidesec.net/home/index/index.html" target="_blank" rel="noopener">TideFinger</a></p>
+<h2 id="0x03-目录扫描"><a href="#0x03-目录扫描" class="headerlink" title="0x03 目录扫描"></a>0x03 目录扫描</h2><p>个人常用(当然，目录扫描还是看字典，如果字典强无所谓哪个工具)</p>
+</li>
+</ol>
+<ol>
+<li>御剑</li>
+<li>pker多线程后台扫描器</li>
+</ol>
+<p>爬虫：</p>
+<ol>
+<li>burpsuite</li>
+<li>AWVS</li>
+</ol>
+<p>穷举</p>
+<ol>
+<li>dirbuster<h2 id="0x04-子域名扫描"><a href="#0x04-子域名扫描" class="headerlink" title="0x04 子域名扫描"></a>0x04 子域名扫描</h2>最快的方法是先查看是否存在DNS域传送漏洞<br>window下使用nslookup，linux使用dig</li>
+</ol>
+<p><img src="/images/pasted-45.png" alt="upload successful"></p>
+<ul>
+<li>搜索引擎枚举：<code>site:xxx.com</code></li>
+<li>子域名挖掘机layer等工具使用</li>
+<li>证书透明度公开日志枚举<ol>
+<li><a href="https://crt.sh" target="_blank" rel="noopener">https://crt.sh</a></li>
+<li><a href="http://censys.io" target="_blank" rel="noopener">http://censys.io</a></li>
+</ol>
+</li>
+<li><ol>
+<li><a href="https://phpinfo.me/domain/" target="_blank" rel="noopener">https://phpinfo.me/domain/</a></li>
+<li><a href="https://findsubdomains.com/" target="_blank" rel="noopener">https://findsubdomains.com/</a></li>
+</ol>
+</li>
+<li><a href="https://www.aizhan.com" target="_blank" rel="noopener">爱站网</a></li>
+<li><a href="http://i.links.cn/subdomain/" target="_blank" rel="noopener">站长帮手网</a></li>
+<li><a href="https://dnsdumpster.com/" target="_blank" rel="noopener">DNSdumpster</a><h2 id="0x05-推荐网站"><a href="#0x05-推荐网站" class="headerlink" title="0x05 推荐网站"></a>0x05 推荐网站</h2>备案信息查询</li>
+</ul>
+<ol>
+<li><p><a href="https://www.tianyancha.com" target="_blank" rel="noopener">天眼查</a></p>
+</li>
+<li><p><a href="http://www.beianbeian.com" target="_blank" rel="noopener">ICP备案查询网</a></p>
+<p>第三方接口查询网站</p>
+<ol>
+<li><a href="https://community.riskiq.com/" target="_blank" rel="noopener">RiskIQ</a></li>
+<li><a href="https://dnsdb.io/zh-cn/" target="_blank" rel="noopener">dnsdb</a></li>
+<li><a href="https://censys.io/" target="_blank" rel="noopener">censys</a></li>
+</ol>
+</li>
+</ol>
+<p>快照信息</p>
+<ul>
+<li><a href="http://web.archive.org/" target="_blank" rel="noopener">历史归档</a>        (类似百度快照，但更全一些，需fq)</li>
+</ul>
+<p>历史DNS收集:</p>
+<ul>
+<li><a href="http://site.ip138.com" target="_blank" rel="noopener">http://site.ip138.com</a></li>
+</ul>
+<p>漏洞平台：</p>
+<ul>
+<li><p>hackone</p>
+</li>
+<li><p>乌云镜像</p>
+<p>  ps:这两个平台有暴露漏洞详细细节，可能找到一些目标站信息</p>
+</li>
+</ul>
+<p>大数据平台信息收集</p>
+<ol>
+<li><a href="https://github.com" target="_blank" rel="noopener">github</a></li>
+<li><a href="https://www.zoomeye.org" target="_blank" rel="noopener">钟馗之眼</a></li>
+<li><a href="https://fofa.so/" target="_blank" rel="noopener">FOFA Pro</a></li>
+<li><a href="https://www.shodan.io/" target="_blank" rel="noopener">shodan</a></li>
+<li><a href="https://x.threatbook.cn/" target="_blank" rel="noopener">威胁情报社区</a></li>
+</ol>
+<h2 id="0x05-搜索引擎"><a href="#0x05-搜索引擎" class="headerlink" title="0x05 搜索引擎"></a>0x05 搜索引擎</h2><p>谷歌语法</p>
+<ul>
+<li>site 指定域名</li>
+<li>intext 正文中存在关键字的网页</li>
+<li>intitle 标题中存在关键字的网页</li>
+<li>info 一些基本信息</li>
+<li>inurl URL存在关键字的网页</li>
+<li>filetype 搜索指定文件类型  <blockquote>
+<ol>
+<li>site:xxx.com inurl:upload.aspx|admin.aspx<br>… …</li>
+</ol>
+</blockquote>
+</li>
+</ul>
+<h2 id="0x06-端口扫描"><a href="#0x06-端口扫描" class="headerlink" title="0x06  端口扫描"></a>0x06  端口扫描</h2><p> 个人常用御剑端口扫描器扫端口（因为比nmap快很多），如果要准确点的话建议超时调大，线程调小</p>
+<blockquote>
+<p>21 ftp 主要看是否支持匿名，也可以跑弱口令<br>22 ssh 弱口令爆破<br>23 telnet 弱口令爆破<br>25 smtp  弱口令爆破<br>80 web站点 常见web漏洞以及是否 为一些管理后台<br>135 Location Service<br>139: Samba服务<br>161 snmp public 弱口令<br>389 idap 是否匿名访问<br>443 openssl 心脏出血漏洞以及一些web漏洞<br>445 smb跑弱口令，检测是否有ms_08067等溢出<br>875 rsync 是否匿名访问，可以跑弱口令<br>1433 mssql跑弱口令<br>1521 oracle 弱口令<br>2601，2604 zebra路由，默认密码zebra<br>3128 squid代理默认端口，如果没设置口令直接漫游内网<br>3306 mysql跑弱口令<br>3389 window远程桌面 弱口令爆破<br>4440 rundeck web<br>4848 glassfish web中间件 弱口令<br>4899-Radmin<br>5432    PostgreSQL<br>5900    vnc<br>6379  redis未授权访问<br>11211 memcached未授权访问<br>27017 MongoDB未授权访问<br>43958 Serv-U  提权<br> …. …</p>
+</blockquote>
+<h2 id="0x07-旁注C段"><a href="#0x07-旁注C段" class="headerlink" title="0x07 旁注C段"></a>0x07 旁注C段</h2><p>旁注即看同ip下是否有运行其他网站，若有则当主网站入侵困难时，可尝试从其他网站入手</p>
+<p>找C段时我常用<br> <a href="https://fofa.so/" target="_blank" rel="noopener">FOFA Pro</a><br> <a href="https://censys.io/" target="_blank" rel="noopener">censys</a><br> <a href="https://github.com/zer0h/httpscan" target="_blank" rel="noopener">httpscan</a> </p>
+<h2 id="0x08-CDN"><a href="#0x08-CDN" class="headerlink" title="0x08 CDN"></a>0x08 CDN</h2><h5 id="判断"><a href="#判断" class="headerlink" title="判断:"></a>判断:</h5><p>使用爱站网或站长之家的 <strong>ping</strong>功能,查看各地ip情况,若不一样，则说明存在cdn。</p>
+<p>找到真实ip:</p>
+<blockquote>
+<p>通过邮件(看邮箱头源 ip)找真实 ip（可靠）<br>通过查询域名历史 ip，<a href="http://toolbar.netcraft.com（借鉴）" target="_blank" rel="noopener">http://toolbar.netcraft.com（借鉴）</a><br>通过 znmap 全网爆破查询真实 ip<br>查子域名，因为有的子域名没有使用CDN</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" rel="tag"># 渗透测试</a>
+              <a href="/tags/%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/" rel="tag"># 信息收集</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/03/13/ctfd%E5%B9%B3%E5%8F%B0%E6%90%AD%E5%BB%BA%E4%BD%93%E4%BC%9A/" rel="prev" title="ctfd平台搭建体会">
+      <i class="fa fa-chevron-left"></i> ctfd平台搭建体会
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/04/02/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E5%9F%BA%E7%A1%80%E7%AF%87%EF%BC%89/" rel="next" title="web渗透笔记之sql注入（基础篇）">
+      web渗透笔记之sql注入（基础篇） <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#0x01-whois查询"><span class="nav-number">1.</span> <span class="nav-text">0x01 whois查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x02-cms指纹识别"><span class="nav-number">2.</span> <span class="nav-text">0x02 cms指纹识别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x03-目录扫描"><span class="nav-number">3.</span> <span class="nav-text">0x03 目录扫描</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x04-子域名扫描"><span class="nav-number">4.</span> <span class="nav-text">0x04 子域名扫描</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x05-推荐网站"><span class="nav-number">5.</span> <span class="nav-text">0x05 推荐网站</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x05-搜索引擎"><span class="nav-number">6.</span> <span class="nav-text">0x05 搜索引擎</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x06-端口扫描"><span class="nav-number">7.</span> <span class="nav-text">0x06  端口扫描</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x07-旁注C段"><span class="nav-number">8.</span> <span class="nav-text">0x07 旁注C段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x08-CDN"><span class="nav-number">9.</span> <span class="nav-text">0x08 CDN</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#判断"><span class="nav-number">9.0.0.1.</span> <span class="nav-text">判断:</span></a></li></ol></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

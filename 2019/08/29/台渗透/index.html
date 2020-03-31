@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="安全客首发：https:&#x2F;&#x2F;www.anquanke.com&#x2F;post&#x2F;id&#x2F;185426 前言有些朋友在渗透时扫描到后台登陆界面，却不知道如何入手。最近刚好在某公司做渗透实习，对目标固定的系统渗透有些体会。因此这里讲一下对网站后台登陆界面的渗透思路，希望能为大家提供一些帮助。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="谈谈如何进行后台渗透">
+<meta property="og:url" content="http://yoursite.com/2019/08/29/%E5%8F%B0%E6%B8%97%E9%80%8F/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="安全客首发：https:&#x2F;&#x2F;www.anquanke.com&#x2F;post&#x2F;id&#x2F;185426 前言有些朋友在渗透时扫描到后台登陆界面，却不知道如何入手。最近刚好在某公司做渗透实习，对目标固定的系统渗透有些体会。因此这里讲一下对网站后台登陆界面的渗透思路，希望能为大家提供一些帮助。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://p1.ssl.qhimg.com/t0191be6af38f915f1e.png">
+<meta property="og:image" content="https://p4.ssl.qhimg.com/t0148affe69b5930de9.png">
+<meta property="og:image" content="https://p0.ssl.qhimg.com/t01c2681c8f06da3268.png">
+<meta property="og:image" content="https://p0.ssl.qhimg.com/t01c6fd0d2e690408a3.png">
+<meta property="og:image" content="https://p0.ssl.qhimg.com/t0188917341bd56a82c.png">
+<meta property="og:image" content="https://p1.ssl.qhimg.com/t0154e09713daf703ee.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t01c6025996c028d285.png">
+<meta property="og:image" content="https://p4.ssl.qhimg.com/t01177393be539adcaa.png">
+<meta property="og:image" content="https://p3.ssl.qhimg.com/t01cf0c06ab23a30590.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t0142134935842018e1.png">
+<meta property="og:image" content="https://p5.ssl.qhimg.com/t011009fcb5086a77ad.jpg">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t01aeb462a5c3091629.png">
+<meta property="og:image" content="https://p5.ssl.qhimg.com/t01ccc1326dd7d97eec.png">
+<meta property="og:image" content="https://p1.ssl.qhimg.com/t01cb53b93b9911786f.png">
+<meta property="og:image" content="https://p4.ssl.qhimg.com/t017f66302d5c223a2e.png">
+<meta property="og:image" content="https://p5.ssl.qhimg.com/t015f5dd4f36826d7ea.png">
+<meta property="og:image" content="https://p5.ssl.qhimg.com/t016b9f4c815648e721.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t01b112ce877f213293.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t0115037f1ceb7510e3.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t0123db921935e12eb8.png">
+<meta property="og:image" content="https://p1.ssl.qhimg.com/t01109efde6ba6991ee.png">
+<meta property="og:image" content="https://p0.ssl.qhimg.com/t0179bc4df8e72e577c.png">
+<meta property="og:image" content="https://p4.ssl.qhimg.com/t019894628af2f960fd.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t0128accab96c99457f.png">
+<meta property="og:image" content="https://p0.ssl.qhimg.com/t01ea6067f89e2d4bdf.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t0115037f1ceb7510e3.png">
+<meta property="og:image" content="https://p1.ssl.qhimg.com/t015611b0de5d58935c.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t010dcac0e34bee7bd8.png">
+<meta property="og:image" content="https://p0.ssl.qhimg.com/t01eb13c826927a06f6.png">
+<meta property="og:image" content="https://p4.ssl.qhimg.com/t013f2385889f6a5d80.png">
+<meta property="og:image" content="https://p5.ssl.qhimg.com/t01e555f9fbb606a9e2.png">
+<meta property="og:image" content="https://p3.ssl.qhimg.com/t010c9e10305b4839b8.png">
+<meta property="og:image" content="https://p0.ssl.qhimg.com/t01c3635df103c3ad77.png">
+<meta property="og:image" content="https://p2.ssl.qhimg.com/t01e6df3bdb2a5ab0ad.png">
+<meta property="og:image" content="https://p4.ssl.qhimg.com/t011b1d9202f0c1a3a1.png">
+<meta property="article:published_time" content="2019-08-29T06:25:00.000Z">
+<meta property="article:modified_time" content="2020-03-08T05:34:30.197Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="渗透测试">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p1.ssl.qhimg.com/t0191be6af38f915f1e.png">
+
+<link rel="canonical" href="http://yoursite.com/2019/08/29/%E5%8F%B0%E6%B8%97%E9%80%8F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>谈谈如何进行后台渗透 | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/29/%E5%8F%B0%E6%B8%97%E9%80%8F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          谈谈如何进行后台渗透
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-08-29 14:25:00" itemprop="dateCreated datePublished" datetime="2019-08-29T14:25:00+08:00">2019-08-29</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-08 13:34:30" itemprop="dateModified" datetime="2020-03-08T13:34:30+08:00">2020-03-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B8%97%E9%80%8F%E4%B9%8B%E8%B7%AF/" itemprop="url" rel="index"><span itemprop="name">渗透之路</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>安全客首发：<a href="https://www.anquanke.com/post/id/185426" target="_blank" rel="noopener">https://www.anquanke.com/post/id/185426</a></p>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>有些朋友在渗透时扫描到后台登陆界面，却不知道如何入手。最近刚好在某公司做渗透实习，对目标固定的系统渗透有些体会。因此这里讲一下对网站后台登陆界面的渗透思路，希望能为大家提供一些帮助。</p>
+<a id="more"></a>
+<h1 id="开始"><a href="#开始" class="headerlink" title="开始"></a>开始</h1><p>本人在进入登陆界面时，一般都是先用万能密码什么的测下输入框有没有注入（现在很少见了）。如果没有，那就先拿admin，123456什么的测试下弱口令，不求运气爆棚一下就猜到密码。主要是看下回显，查看是否存在<strong>账号锁定策略</strong>，<strong>密码不正确</strong>，<strong>不存在此用户名</strong>等信息，以便于尝试遍历可能存在的用户名。没验证码就上爆破工具，有验证码的话看看能不能绕过,实在不行手工测几个账号密码碰碰运气。</p>
+<h1 id="爆破"><a href="#爆破" class="headerlink" title="爆破"></a>爆破</h1><p>如果没验证码阻碍，那爆破没什么好说的，拿个好字典，直接干就是了。</p>
+<p>不过注意下有时密码传输会使用md5或者base64之类的加密，这时除了自己写脚本外，可以使用burpsuite的intruder模块内容。<br><img src="https://p1.ssl.qhimg.com/t0191be6af38f915f1e.png" alt=""><br><img src="https://p4.ssl.qhimg.com/t0148affe69b5930de9.png" alt=""></p>
+<p>爆破的传统思路都是固定账号爆破密码，还有一种姿势是固定密码爆破用户名。比如使用固定密码123456，爆破常用用户名或者常用人名拼音。</p>
+<h1 id="扫目录"><a href="#扫目录" class="headerlink" title="扫目录"></a>扫目录</h1><p>目录扫描也是一个存在惊喜的地方，说不定能扫描到后台未授权访问的链接、备份文件、编辑器、敏感信息等。<br>像后台登陆的网址看多了，常规的路径像<a href="http://www.xxx.com/admin/login.aspx(.php)" target="_blank" rel="noopener">www.xxx.com/admin/login.aspx(.php)</a><br>老司机甚至不用御剑什么的工具跑，就能直接猜到。</p>
+<p>一般碰到下面这种情况，可采用fuzz大法。一层一层fuzz，尝试寻找可利用的信息。漏洞银行有一期衬衫的视频fuzz讲得很好。他用的工具是wfuzz，感觉不错，感兴趣的可以去看看。<br><img src="https://p0.ssl.qhimg.com/t01c2681c8f06da3268.png" alt=""></p>
+<p><img src="https://p0.ssl.qhimg.com/t01c6fd0d2e690408a3.png" alt=""></p>
+<p><strong>这里给大家讲一下我做授权渗透的一个案列:</strong><br>一般给客户的后台系统做渗透，客户都会给个测试账号，除了测登陆界面外，还测下后台的功能模块。但这次当我问客户要账号密码时，客户回：你们不是要模拟黑客做渗透测试吗，那就自己打进去啊。( ╯□╰ )好吧，作为实习生的我也只能硬着头皮刚登陆界面了。</p>
+<p>先看了下链接，发现是Java站，且链接是.do结尾，但struct2工具试了下没成功。<br><img src="https://p0.ssl.qhimg.com/t0188917341bd56a82c.png" alt=""></p>
+<p>看了下登陆界面，有验证码，网站看去的版本也挺新的，感觉不太好搞。<br><img src="https://p1.ssl.qhimg.com/t0154e09713daf703ee.png" alt=""></p>
+<p>测下注入无果，于是抓包看下验证码是否可以绕过或者不变，结果这个验证码很称职，爆破不了。验证码辨认还算清楚，不过验证码识别，总觉得不太靠谱。。。等绝望了找不到洞再试吧。于是去扫了下目录。诶，发现有好东西。<br><img src="https://p2.ssl.qhimg.com/t01c6025996c028d285.png" alt=""></p>
+<p>首先扫到了一个services服务路径<br><img src="https://p4.ssl.qhimg.com/t01177393be539adcaa.png" alt=""><br>知道了Apache Axis组件的版本信息<br><img src="https://p3.ssl.qhimg.com/t01cf0c06ab23a30590.png" alt=""><br>然后马上想到这个组件当时刚爆出一个RCE漏洞<br>poc链接：<a href="https://github.com/KibodWapon/Axis-1.4-RCE-Poc" target="_blank" rel="noopener">https://github.com/KibodWapon/Axis-1.4-RCE-Poc</a><br>结果试了下没成功。然后再尝试了四月份CNVD看到的RCE漏洞也无果。</p>
+<p>还扫出了一个ckfinder编辑器<br><a href="http://xxx.xxx.com/ckfinder/ckfinder.html" target="_blank" rel="noopener">http://xxx.xxx.com/ckfinder/ckfinder.html</a><br><img src="https://p2.ssl.qhimg.com/t0142134935842018e1.png" alt=""><br>一看，我滴乖乖，难道已经有黑客搞进去了？<br>赶紧网上找了下这个版本有存在什么漏洞，并尝试文件上传绕过。但很遗憾，这个网站并不存在解析漏洞，利用不了，文件上传也没绕过。不过令人庆幸的是，黑客应该也没有利用成功。</p>
+<p>。。。<br>又挖了一段时间，同事竟然说他拿shell了！<br>what?<img src="https://p5.ssl.qhimg.com/t011009fcb5086a77ad.jpg" alt=""></p>
+<p>发现他扫目录扫到了<a href="http://xxx.xx.com/manager/html" target="_blank" rel="noopener">http://xxx.xx.com/manager/html</a><br><img src="https://p2.ssl.qhimg.com/t01aeb462a5c3091629.png" alt=""><br>然后一个admin/123456弱口令进入tomcat后台，然后传war包成功拿到shell<br><img src="https://p5.ssl.qhimg.com/t01ccc1326dd7d97eec.png" alt=""><br>看了这波操作久久无语，看来我的字典太差，tomcat目录都没扫出来。还有弱口令漏洞，真的很无敌。</p>
+<h1 id="框架漏洞"><a href="#框架漏洞" class="headerlink" title="框架漏洞"></a>框架漏洞</h1><p>对一些CMS，已经比较成熟了，漏洞确实不好挖。如果网上（乌云，seebug，搜索引擎等）的历史漏洞没有复现成功，那一般情况下就只能寻找下逻辑漏洞、网站管理员配置错误或者弱口令什么的。</p>
+<p>对于一些不知名的框架，一般也可通过登陆界面底下的声明中找到开发公司和产品版本时间。<br><img src="https://p1.ssl.qhimg.com/t01cb53b93b9911786f.png" alt=""><br>在网上找找此公司产品是否爆出过漏洞。若是开源的框架，还可下载源码进行代码审计寻找漏洞。</p>
+<p>像java的站，登陆页面是.do或.action的网址。可尝试下 struts2 命令执行漏洞，本人一般使用安恒的S2漏洞验证工具。<br><img src="https://p4.ssl.qhimg.com/t017f66302d5c223a2e.png" alt=""></p>
+<p>又如thinkphp的CMS，可尝试下是否存在相应版本的命令执行漏洞。本人曾在邮储银行的一个系统登陆界面挖到tp5命令执行漏洞拿到shell，补天评了1700元。emmmm,当然厂商说漏洞无影响给拒了就是另一回事了……<br><img src="https://p5.ssl.qhimg.com/t015f5dd4f36826d7ea.png" alt=""></p>
+<h1 id="弱口令"><a href="#弱口令" class="headerlink" title="弱口令"></a>弱口令</h1><p>可能有些小伙伴对弱口令嗤之以鼻，觉得它没有技术含量，但其实不然，结合社工，它的作用和危害可能比其他漏洞更大，希望大家重视。</p>
+<p>刚巧最近有去公安厅复测6月HW的漏洞，检测漏洞是否修复。几十份报告，原以为要花很长时间，但结果却是：差不多半小时就完成了，且部分时间是花在输入网址上（报告不给拷到自己电脑上，只能看着公安厅电脑的报告手打网址）。<br>耗时少的其中一个原因是漏洞有<strong>八、九层</strong>的漏洞都是弱口令，其中大部分漏洞还都是部委级别的系统，所以测的很快。虽然hw期间比较特殊，还是比例这么大还是挺能说明问题的。</p>
+<p><strong>以下是某大佬对14年底12306泄露密码的统计分析</strong></p>
+<p>哈哈，可以发现我国还是对数字情有独钟，国外的top100弱口令还是不适合我大天朝的国情。很少有password,football之类的英文密码。<br>密码中包含有 123456 数字的，出现 3236 次<br>密码中包含有 123 数字的，出现 11213 次<br>密码中包含有 520 数字的，出现 4549 次<br>密码中包含有 1314 数字的，出现 3113 次<br>密码中包含有 aini 的，出现 877 次<br>`</p>
+<pre><code>次数 密码
+392 123456
+281 a123456
+165 123456a
+161 5201314
+157 111111
+136 woaini1314
+ 98 qq123456
+ 98 123123
+ 97 000000
+ 93 1qaz2wsx
+ 83 1q2w3e4r
+ 80 qwe123
+ 76 7758521
+ 68 123qwe
+ 63 a123123
+ 56 woaini520
+ 55 123456aa
+ 52 1314520
+ 52 100200
+ 51 woaini
+ 50 woaini123
+ 50 123321
+ 49 q123456
+ 49 123456789
+ 48 asd123
+ 48 a123456789
+ 48 5211314
+ 48 123456789a
+ 47 z123456
+ 47 asd123456
+ 45 a5201314
+ 42 zhang123
+ 41 aa123456
+ 40 123123a
+ 38 aptx4869
+ 37 1qazxsw2
+ 37 1q2w3e4r5t
+ 36 5201314a
+ 35 aini1314
+ 35 1q2w3e
+ 34 woaini521
+ 34 q1w2e3r4
+ 34 31415926
+ 34 123456qq
+ 33 a111111
+ 33 520520
+ 33 1234qwer
+ 29 123456abc
+ 29 111111a
+ 29 110110
+ 28 w123456
+ 28 abc123
+ 28 7758258
+ 26 iloveyou
+ 26 159753
+ 25 qwer1234
+ 25 a000000
+ 24 zxc123
+ 24 123qweasd
+ 24 123654
+ 23 qq123123
+ 23 abc123456
+ 23 123456q
+ 22 qq5201314
+ 22 12345678
+ 21 456852
+ 21 000000a
+ 20 1314521
+ 19 zxc123456
+ 19 asdasd
+ 19 as123456
+ 19 666666
+ 19 521521
+ 19 112233
+ 18 q1w2e3
+ 18 abcd1234
+ 18 aaa123
+ 17 qazwsx123
+ 17 qaz123
+ 17 aaaaaa
+ 17 a123321
+ 17 12qwaszx
+ 17 123000
+ 17 11111111
+ 16 zxcvbnm123
+ 16 wang123
+ 16 s123456
+ 16 nihao123
+ 16 love1314
+ 16 caonima123
+ 16 asdasd123
+ 16 753951
+ 16 5845201314
+ 16 584520
+ 16 159357
+ 16 147258
+ 16 1123581321
+ 16 110120
+ 15 hao123
+ 15 a7758521</code></pre><p>` </p>
+<p><strong>遇到网络设备，基本像交换机、路由器、安全设备之类的，可以尝试一下默认密码</strong></p>
+<p>网上找到的，但忘了是哪个大佬发的了。</p>
+<blockquote>
+<p>天融信防火墙，不需要证书 登录地址:<a href="https://192.168.1.254" target="_blank" rel="noopener">https://192.168.1.254</a> 用户名:superman 密码:talent 技术支持热线：8008105119<br>天融信防火墙，不需要证书 登录地址:<a href="https://192.168.1.254：8080">https://192.168.1.254：8080</a> 用户名:superman 密码:talent！23 遇到设备需要把旧设备配置备份下来，再倒入新设备基于console口登陆，用户名，密码跟web界面一致 system config reset 清除配置 save 保存 联想网御防火墙，需要证书（最好用IE浏览器登录）<br>登录地址:<a href="https://10.1.5.254:8889" target="_blank" rel="noopener">https://10.1.5.254:8889</a> 用户名:admin 密码:leadsec@7766、administrator、bane@7766 技术支持热线：4008107766 010-56632666<br>深信服防火墙（注安全设备管理地址不是唯一的） <a href="https://10.251.251.251" target="_blank" rel="noopener">https://10.251.251.251</a><br><a href="https://10.254.254.254" target="_blank" rel="noopener">https://10.254.254.254</a> 用户名：admin 密码：admin 技术支持热线：4006306430<br>启明星辰 <a href="https://10.1.5.254:8889" target="_blank" rel="noopener">https://10.1.5.254:8889</a> 用户名：admin 密码：bane@7766<br><a href="https://10.50.10.45:8889" target="_blank" rel="noopener">https://10.50.10.45:8889</a> 用户名：admin 密码：admin@123 电脑端IP：10.50.10.44/255.255.255.0 技术支持热线：4006243900<br>juniper 登录地址:<a href="https://192.168.1.1" target="_blank" rel="noopener">https://192.168.1.1</a> 用户名:netscreen 密码:netscreen<br>Cisco 登录地址:<a href="https://192.168.0.1" target="_blank" rel="noopener">https://192.168.0.1</a> 用户名:admin 密码:cisco<br>Huawei 登录地址:<a href="http://192.168.0.1" target="_blank" rel="noopener">http://192.168.0.1</a> 用户名:admin 密码:Admin@123<br>H3C 登录地址:<a href="http://192.168.0.1" target="_blank" rel="noopener">http://192.168.0.1</a> 用户名:admin 密码:admin 技术支持热线：4006306430<br>绿盟IPS <a href="https://192.168.1.101" target="_blank" rel="noopener">https://192.168.1.101</a> 用户名: weboper 密码: weboper 配置重启生效<br>网神防火墙GE1口 <a href="https://10.50.10.45" target="_blank" rel="noopener">https://10.50.10.45</a> 用户名：admin 密码：firewall 技术支持热线：4006108220<br>深信服VPN： 51111端口 delanrecover<br>华为VPN：账号：root 密码：mduadmin<br>华为防火墙： admin Admin@123 eudemon<br>eudemon Juniper防火墙： netscreen netscreen<br>迪普 192.168.0.1 默认的用户名和密码（admin/admin_default)<br>山石 192.168.1.1 默认的管理账号为hillstone，密码为hillstone<br>安恒的明御防火墙 admin/adminadmin<br>某堡垒机 shterm/shterm<br>天融信的vpn test/123456</p>
+</blockquote>
+<h1 id="社工"><a href="#社工" class="headerlink" title="社工"></a>社工</h1><p>在我看来社工是很牛逼的一种攻击方式，有时可以四两拨千斤。</p>
+<p>像教育站，登陆账号可能是学号，密码是身份证后六位。百度查xxx学校一卡通丢失，一般就能从某学生的失物启示找到学号。</p>
+<p>或者在文章标题下，若存在作者名字，可能就是用户名<br><img src="https://p5.ssl.qhimg.com/t016b9f4c815648e721.png" alt=""></p>
+<p>密码除结合管理员电话，qq，姓名等外，还可注意下网站的一些关键词。曾挖过一个弱口令漏洞，密码是网站域名+123，都不用生成字典就进后台了。</p>
+<p>最近刚好参加某省护网，讲个例子：对某系统爆破admin用户的密码没成功，于是在<strong>联系我们</strong>处找到了管理员的一些信息，想生成社工字典试下运气。<br><img src="https://p2.ssl.qhimg.com/t01b112ce877f213293.png" alt=""><br>本想直接用社工密码生成工具生成字典爆破一下的，但突然想到注册处可以遍历用户名是否存在<br><img src="https://p2.ssl.qhimg.com/t0115037f1ceb7510e3.png" alt=""><br><img src="https://p2.ssl.qhimg.com/t0123db921935e12eb8.png" alt=""><br>于是结合社工尝试几个账号，发现联系我们处的管理员的账号是<code>姓氏首字母加名字全拼</code>，然后一爆破，密码123456直接进去后台。并在后台的搜索处发现Sql注入，再用sqlmap神器的命令 –os-shell成功打开xpcmdshell，拿到系统权限。</p>
+<p>社工密码字典生成,怕麻烦的可使用在线网站生成：<a href="http://tools.mayter.cn/" target="_blank" rel="noopener">http://tools.mayter.cn/</a><br><img src="https://p1.ssl.qhimg.com/t01109efde6ba6991ee.png" alt=""></p>
+<p>也可使用cupp这款工具，这是一款交互式的工具，使用比较简单<br>地址：<a href="https://github.com/Mebus/cupp.git" target="_blank" rel="noopener">https://github.com/Mebus/cupp.git</a></p>
+<p><img src="https://p0.ssl.qhimg.com/t0179bc4df8e72e577c.png" alt=""></p>
+<p><img src="https://p4.ssl.qhimg.com/t019894628af2f960fd.png" alt=""><br>看看生成的密码：<br><img src="https://p2.ssl.qhimg.com/t0128accab96c99457f.png" alt=""></p>
+<p><img src="https://p0.ssl.qhimg.com/t01ea6067f89e2d4bdf.png" alt=""><br>另一款是cewl，它通过爬行网站获取关键信息创建一个密码字典。<br>但我用了下，感觉生成的字典比较多冗余信息，很多关联不大的汉字都包含在字典中，个人觉得不是特别好用。</p>
+<p>还有最近freebuf看了一篇文章，才发现hashcat这款爆破工具也能生成社工字典，感兴趣的朋友也可以去试试。</p>
+<h1 id="逻辑漏洞"><a href="#逻辑漏洞" class="headerlink" title="逻辑漏洞"></a>逻辑漏洞</h1><p>逻辑漏洞是由于一些程序员未考虑到或者为贪图省事，而造成的逻辑上的漏洞，一般waf不容易拦截，因此和弱口令漏洞都是现在相对容易挖掘的一类漏洞。逻辑漏洞种类十分丰富，这里讲登陆框的逻辑漏洞，主要介绍一些技巧给大家拓宽一下思路，讲的不全请见谅。更详细的漏洞细节大家可以在网上查找资源（绝不是因为我懒）。</p>
+<h4 id="注册与忘记密码模块"><a href="#注册与忘记密码模块" class="headerlink" title="注册与忘记密码模块"></a>注册与忘记密码模块</h4><p><strong>云短信接受平台</strong><br>相信有些朋友在测试注册模块的时候，会使用自己的手机号，而这就带来隐患：信息泄露，和短信骚扰。<br>这里给大家提供两个短信接受平台，让大家免去烦恼：<br><a href="https://www.pdflibr.com/" target="_blank" rel="noopener">https://www.pdflibr.com/</a><br><a href="http://www.smszk.com/" target="_blank" rel="noopener">http://www.smszk.com/</a></p>
+<p><strong>遍历已注册用户</strong><br>这个上面的社工例子有讲，可查到用户是否存在。<br><img src="https://p2.ssl.qhimg.com/t0115037f1ceb7510e3.png" alt=""></p>
+<p><strong>任意用户注册</strong><br>注册用户不需验证码认证即可注册成功的情况下，可使用工具发包，恶意批量注册用户。<br><strong>修改发送包邮箱尝试覆盖注册</strong></p>
+<ol>
+<li>注册时显示某用户已注册；</li>
+<li>在注册新用户时抓包，更改自己的账号信息为admin用户；</li>
+<li>可能可以覆盖admin用户，重新注册成功。</li>
+</ol>
+<p><strong>任意密码重置</strong><br>修改密码时使用其他人的手机号，可抓包更改成自己的手机号。自己手机收到验证信息并输入，可更改他人密码成功。</p>
+<p><strong>跳过验证</strong><br>跳过验证步骤、找回方式，直接到设置新密码页面<br>这里直接用乌云的例子说明应该就懂了。<br><a href="http://www.anquan.us/static/bugs/wooyun-2015-098765.html" target="_blank" rel="noopener">中国电信某IDC机房信息安全管理系统设计缺陷致使系统沦陷</a></p>
+<p><strong>短信轰炸</strong><br>短信轰炸，一般人可能抓包重放失败后就放弃了。这里有个技巧，<br>是从西门吹雪师傅博文里学到的绕过的姿势：<br>发送短信处一般每隔60秒才能发送一次<br><img src="https://p1.ssl.qhimg.com/t015611b0de5d58935c.png" alt=""></p>
+<p>但若是发包时在手机号后加上一个空格、加号或换行符等特殊字符。然后重新发送，这时若发送成功，则说明可绕过限制。<br><img src="https://p2.ssl.qhimg.com/t010dcac0e34bee7bd8.png" alt=""></p>
+<p>此时在intruder模块只要持续递增空格就可造成无限短信轰炸<br><img src="https://p0.ssl.qhimg.com/t01eb13c826927a06f6.png" alt=""></p>
+<p><a href="http://ximcx.cn/post-143.html" target="_blank" rel="noopener">博文链接</a></p>
+<h4 id="越权"><a href="#越权" class="headerlink" title="越权"></a>越权</h4><p><strong>越权访问目录</strong><br>可越权访问到后台路径，网站组件配置文件，备份文件等，当然扫目录字典也要好。<br><strong>修改身份标识</strong><br>更改成功登陆的用户的身份标识，可能就能越权访问到其他用户的页面。<br>例如：1、本人之前曾用test用户弱口令漏洞登陆成功，然后更改参数越权访问到admin用户；2、曾看过一漏洞：用户认证的token值是用户名加时间戳的md5值，而恰好数据包某处就有返回用户名加时间戳，然后更改时间戳前的用户名，md5后加在token上成功越权到其他用户上（这种漏洞一般需要细心查找登陆时身份认证参数的规律）</p>
+<p>之前的任意密码重置等漏洞，其实也是修改用户身份标识，系统认证机制不完善导致漏洞出现。</p>
+<p><strong>抓返回包</strong><br>在登陆时返回包可能返回用户敏感信息，此时改一改参数说不定还能越权查到其他用户信息。<br>或注册、找回密码发送短信邮箱时，可能直接返回验证码等</p>
+<p>在返回包里，更改下参数为true、success、1，可能就能未授权进入后台</p>
+<ol>
+<li><p>登陆抓包，点击右键，抓取返回包<br><img src="https://p4.ssl.qhimg.com/t013f2385889f6a5d80.png" alt=""></p>
+</li>
+<li><p>观察返回的参数<br><img src="https://p5.ssl.qhimg.com/t01e555f9fbb606a9e2.png" alt=""></p>
+</li>
+<li><p>更改参数<br><img src="https://p3.ssl.qhimg.com/t010c9e10305b4839b8.png" alt=""></p>
+</li>
+<li><p>成功进入后台</p>
+</li>
+</ol>
+<p><strong>禁用js</strong></p>
+<p>曾经碰到过一个站点，能未登陆访问后台首页，但再次点击就会退出到登陆页面。此时禁用js，然后成功访问部分功能模块，成功利用文件上传拿到webshell。<br>因为有些网站的Url跳转是由前端js控制，这时禁用js后说不定就能成功访问。<br>下面是火狐的一个禁用js的插件<br><img src="https://p0.ssl.qhimg.com/t01c3635df103c3ad77.png" alt=""></p>
+<h1 id="看网站源码信息"><a href="#看网站源码信息" class="headerlink" title="看网站源码信息"></a>看网站源码信息</h1><p>当你思路枯竭的时候不妨看看源码，它是一块宝藏，说不定就能在里面发现惊喜。有些程序员会把后台的功能链接放在前端源码中,说不定就存在未授权访问，甚至有些奇葩程序员在前端代码存放测试的账号密码。</p>
+<p>首先给大家推荐一款工具，很强大：JSFinder<br>链接：<a href="https://github.com/Threezh1/JSFinder" target="_blank" rel="noopener">https://github.com/Threezh1/JSFinder</a><br>这是一款在网站的js文件中提取URL，子域名的工具，用在后台登陆界面抓取一些敏感的js文件效果也很不错，我曾用它抓取过网站后台的一个插件源码，后台的功能链接，敏感信息，接口链接（存在xss，注入）等等。我同学还说过burp也有抓js的插件，但可惜我没找到，用这款也差不多够用了。<br><img src="https://p2.ssl.qhimg.com/t01e6df3bdb2a5ab0ad.png" alt=""></p>
+<p><img src="https://p4.ssl.qhimg.com/t011b1d9202f0c1a3a1.png" alt=""></p>
+<p>这里讲一下乌云的一个案例，具体链接忘记了，就讲一下思路：<br>洞主之前发现了一个漏洞，提交后，等过一段时间再去瞧下那个站，发现系统大变样，连url的路径都改了，已经修复了吗？<br>但是当洞主右键查看源代码时，发现还保留着之前旧系统的链接和代码，有的只是注释了而已，关键是漏洞竟然还没修？！tql，这种开发建议直接祭天。</p>
+<p>看js代码，甚至一些图片的链接，说不定就有一番意外的收获。比如R3start大佬的一篇博文中讲的就很精彩<a href="http://r3start.net/index.php/2019/07/15/546" target="_blank" rel="noopener">从JS信息泄露到Webshell</a></p>
+<p>文章的思路是：<br>作者进行渗透时，在一个图片链接中发现了一个三级子域名，删掉URl、直接访问根路径发现了一个title是某管理平台的页面。<br>但页面无法正常加载，故进行目录扫描得到后台地址和后台js压缩包，然后在源码的某处JS代码中发现了多个可登录的账号。<br>尝试弱口令无果后，从js压缩包查到了默认密码规则。成功登陆一个普通用户，但发现权限并不大。<br>然后通过js代码寻找获取到了别的接口地址，发现存在越权漏洞，通过JS接口越权访问到活动管理页面获取到管理员的登陆账号。<br>最后找上传点，抓包改后缀拿shell一气呵成。</p>
+<p>引用R3start师傅的一句话：<br>右键查看JS源码，你可能会发现… 被注释的账号密码、接口、token、真实IP、开发环境…. 永远不知道程序员在JS中给你留下了什么样的惊喜。</p>
+<h1 id="端口漏洞"><a href="#端口漏洞" class="headerlink" title="端口漏洞"></a>端口漏洞</h1><h4 id="未授权漏洞"><a href="#未授权漏洞" class="headerlink" title="未授权漏洞"></a>未授权漏洞</h4><blockquote>
+<p>redis 6379</p>
+</blockquote>
+<blockquote>
+<p>MongoDB 27017</p>
+</blockquote>
+<h4 id="弱口令-1"><a href="#弱口令-1" class="headerlink" title="弱口令"></a>弱口令</h4><blockquote>
+<p>mysql    3306</p>
+</blockquote>
+<blockquote>
+<p>mssql         1433</p>
+</blockquote>
+<blockquote>
+<p>postgresql  5432</p>
+</blockquote>
+<blockquote>
+<p>ssh         22<br>ftp 21</p>
+</blockquote>
+<h4 id="相关CVE漏洞"><a href="#相关CVE漏洞" class="headerlink" title="相关CVE漏洞"></a>相关CVE漏洞</h4><h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>其实在发安全客时挺仓促的，写的有点乱，并且还有url跳转和端口渗透忘了加上去了，大家将就看吧。<br>上面的内容比较杂，篇幅也比较长，所以有些地方就没有展开来讲。有些地方可能讲得比较简略模糊，请大家见谅，如果有疑惑可以联系我。</p>
+<p>顺便说下感想：<br>这段时间的安服实习对我带来很大的帮助，面对一些系统目标固定，不能横向渗透。C段、端口扫描、子域名挖掘等信息收集都做不了，只能硬着头皮怼目标。而做安全服务经常碰到的就是后台登陆界面，怼着怼着就成长了，毕竟孰能生巧。<br>虽然渗透比较艰难，但也培养了我的漏洞挖掘能力。反思下自己以前挖漏洞，都是走马观花，面对信息收集来的一大堆资产，都是随便测下就结束，并没有<strong>深入</strong>且<strong>细心</strong>地去寻找漏洞，导致之前的SRC挖掘之旅十分困难。因此希望新手在挖洞时能够更加细心，特别是挖掘SRC时，有时就得花时间一个参数一个参数去”怼”，才能有所收获。要相信，大力出奇迹！</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" rel="tag"># 渗透测试</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/08/09/php%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="prev" title="php学习笔记">
+      <i class="fa fa-chevron-left"></i> php学习笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/10/24/QL%E6%B3%A8%E5%85%A5%E7%BB%95%E8%BF%87/" rel="next" title="SQL注入绕过">
+      SQL注入绕过 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#开始"><span class="nav-number">2.</span> <span class="nav-text">开始</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#爆破"><span class="nav-number">3.</span> <span class="nav-text">爆破</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#扫目录"><span class="nav-number">4.</span> <span class="nav-text">扫目录</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#框架漏洞"><span class="nav-number">5.</span> <span class="nav-text">框架漏洞</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#弱口令"><span class="nav-number">6.</span> <span class="nav-text">弱口令</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#社工"><span class="nav-number">7.</span> <span class="nav-text">社工</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#逻辑漏洞"><span class="nav-number">8.</span> <span class="nav-text">逻辑漏洞</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#注册与忘记密码模块"><span class="nav-number">8.0.0.1.</span> <span class="nav-text">注册与忘记密码模块</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#越权"><span class="nav-number">8.0.0.2.</span> <span class="nav-text">越权</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#看网站源码信息"><span class="nav-number">9.</span> <span class="nav-text">看网站源码信息</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#端口漏洞"><span class="nav-number">10.</span> <span class="nav-text">端口漏洞</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#未授权漏洞"><span class="nav-number">10.0.0.1.</span> <span class="nav-text">未授权漏洞</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#弱口令-1"><span class="nav-number">10.0.0.2.</span> <span class="nav-text">弱口令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#相关CVE漏洞"><span class="nav-number">10.0.0.3.</span> <span class="nav-text">相关CVE漏洞</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结"><span class="nav-number">11.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

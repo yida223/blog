@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="推荐米斯特的wfuzz手册三部曲 相关命令 -c：用颜色输出  -v：详细的信息">
+<meta property="og:type" content="article">
+<meta property="og:title" content="爆破工具wfuzz的使用笔记">
+<meta property="og:url" content="http://yoursite.com/2019/04/09/%E5%B7%A5%E5%85%B7wfuzz%E7%9A%84%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="推荐米斯特的wfuzz手册三部曲 相关命令 -c：用颜色输出  -v：详细的信息">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/images/pasted-37.png">
+<meta property="article:published_time" content="2019-04-09T13:32:00.000Z">
+<meta property="article:modified_time" content="2019-08-09T16:06:10.623Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="渗透测试">
+<meta property="article:tag" content="工具">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/images/pasted-37.png">
+
+<link rel="canonical" href="http://yoursite.com/2019/04/09/%E5%B7%A5%E5%85%B7wfuzz%E7%9A%84%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>爆破工具wfuzz的使用笔记 | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/09/%E5%B7%A5%E5%85%B7wfuzz%E7%9A%84%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          爆破工具wfuzz的使用笔记
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-04-09 21:32:00" itemprop="dateCreated datePublished" datetime="2019-04-09T21:32:00+08:00">2019-04-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-08-10 00:06:10" itemprop="dateModified" datetime="2019-08-10T00:06:10+08:00">2019-08-10</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%99%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">教程</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>推荐米斯特的wfuzz手册三部曲</p>
+<h2 id="相关命令"><a href="#相关命令" class="headerlink" title="相关命令"></a>相关命令</h2><ul>
+<li><p>-c：用颜色输出</p>
+</li>
+<li><p>-v：详细的信息</p>
+<a id="more"></a></li>
+<li><p>-o 打印机：由stderr输出格式</p>
+</li>
+<li><p>-p addr：使用代理（ip：port或ip：port-ip：port-ip：port）</p>
+</li>
+<li><p>-x type：使用SOCK代理（SOCKS4，SOCKS5）</p>
+</li>
+<li><p>-t N：指定线程数（默认20个）</p>
+</li>
+<li><p>-s N：指定请求之间的时间延迟（默认为0）</p>
+</li>
+</ul>
+<ul>
+<li><p>-e <type>：可用编码/有效载荷/迭代器/打印机的列表</p>
+<ul>
+<li><p>-R depth：递归路径发现</p>
+</li>
+<li><p>-I：使用HTTP HEAD而不是GET方法（没有HTML主体响应）。</p>
+</li>
+</ul>
+</li>
+<li><p>–follow：遵循重定向</p>
+</li>
+</ul>
+<ul>
+<li><p>-m iterator：指定迭代器（默认产品）</p>
+</li>
+<li><p>-z payload ：指定有效载荷（类型，参数，编码）</p>
+</li>
+<li><p>-V alltype：所有参数bruteforcing（allvars和allpost）。不需要FUZZ关键字。</p>
+</li>
+</ul>
+<ul>
+<li><p>-X：HTTP方法中的有效载荷（例如：“FUZZ HTTP / 1.0”）。不需要FUZZ关键字。</p>
+</li>
+<li><p>-b cookie：为请求指定一个cookie</p>
+</li>
+<li><p>-d postdata：传输post数据（例如：“id = FUZZ＆catalog = 1”）</p>
+</li>
+<li><p>-H headers：使用头文件（例如：”Host:<a href="http://www.mysite.com,Cookie:id=1312321&amp;user=FUZZ&quot;）">www.mysite.com,Cookie:id=1312321&amp;user=FUZZ&quot;）</a></p>
+</li>
+<li><p>–basic/ntlm/digest auth：格式为“user：pass”或“FUZZ：FUZZ”或“domain \ FUZ2Z：FUZZ”</p>
+</li>
+</ul>
+<ul>
+<li><p>–hc/hl/hw/hh N[,N]+ ：隐藏指定的代码/行/字/字符的resposnes（使用BBB从基线获取值）</p>
+<ul>
+<li><p>–hs regex ：在响应中隐藏具有指定正则表达式的响应</p>
+</li>
+<li><p>–sl（show lines），–sw（show word），–sh （show chars）<br>显示响应结果的使用方法跟隐藏时的原理一样，只不过参数变为了：–sc（show code）</p>
+<h5 id="使用Baseline-基准线"><a href="#使用Baseline-基准线" class="headerlink" title="使用Baseline(基准线)"></a>使用Baseline(基准线)</h5><p>过滤器可以是某个HTTP响应的引用，这样的引用我们称为Baseline。<br>之前的使用–hh进行过滤的例子中，还可以使用下面的命令代替：</p>
+</li>
+</ul>
+</li>
+<li><p>wfuzz -w 字典–hh BBB <a href="https://www.baidu.com/FUZZ{404there}" target="_blank" rel="noopener">https://www.baidu.com/FUZZ{404there}</a></p>
+<blockquote>
+<p>解释下<a href="https://www.baidu.com/FUZZ{404there}的意思，这里代表wfuzz第一个请求是请求https://www.baidu.com/404there这个网址，在{" target="_blank" rel="noopener">https://www.baidu.com/FUZZ{404there}的意思，这里代表wfuzz第一个请求是请求https://www.baidu.com/404there这个网址，在{</a> }内的值用来指定wfuzz第一个请求中的FUZZ占位符，而这第一个请求被标记为BBB（BBB不能换成别的）基准线；其次这里使用的参数是–hh，也就是以BBB这条请求中的Chars为基准，其他请求的Chars值与BBB相同则隐藏。</p>
+</blockquote>
+</li>
+</ul>
+<p> 相关payloads</p>
+<blockquote>
+<p>wfuzz -e payloads</p>
+</blockquote>
+<p><img src="/images/pasted-37.png" alt="upload successful"></p>
+<h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><p>基本使用</p>
+<ul>
+<li>wfuzz -w 字典  <a href="https://test.com/FUZZ" target="_blank" rel="noopener">https://test.com/FUZZ</a></li>
+</ul>
+<p>隐藏指定的代码</p>
+<ul>
+<li>wfuzz -w 字典 –hc 404,403 <a href="http://test.com/FUZZ" target="_blank" rel="noopener">http://test.com/FUZZ</a></li>
+</ul>
+<p>遍历</p>
+<ul>
+<li>wfuzz -z range,000-999  <a href="http://www.test.com/a.php?id=FUZZ" target="_blank" rel="noopener">http://www.test.com/a.php?id=FUZZ</a></li>
+</ul>
+<p>爆破登陆框</p>
+<ul>
+<li><p>wfuzz -z file,users.txt -z file,pass.txt –hc 404 <a href="http://www.test.com/login.asp?user=FUZZ&amp;pass=FUZ2Z" target="_blank" rel="noopener">http://www.test.com/login.asp?user=FUZZ&amp;pass=FUZ2Z</a>  或者</p>
+</li>
+<li><p>wfuzz -w 用户名字典 -w 密码字典 -d “username=FUZZ&amp;password=FUZ2Z”   <a href="http://www.test.com/login.asp" target="_blank" rel="noopener">http://www.test.com/login.asp</a></p>
+<p>想要同时爆破目录、文件名、后缀，可以：</p>
+</li>
+<li><p>wfuzz -w 目录字典路径 -w 文件名字典路径 -w 后缀名字典路径 URL/FUZZ/FUZ2Z.FUZ3Z</p>
+</li>
+</ul>
+<p>cookie测试</p>
+<ul>
+<li>wfuzz -z range,000-999 -b session=session -b cookie=cookie  <a href="http://www.test.com/login.asp?id=FUZZ" target="_blank" rel="noopener">http://www.test.com/login.asp?id=FUZZ</a></li>
+</ul>
+<p>http头测试</p>
+<ul>
+<li>wfuzz -w 字典 -H “X-Forwarded-For:FUZZ” <a href="http://www.test.com/login.asp?id=6666" target="_blank" rel="noopener">http://www.test.com/login.asp?id=6666</a><br>… …<br>未完待续</li>
+</ul>
+<h3 id="引用"><a href="#引用" class="headerlink" title="引用"></a>引用</h3><p>链接：<a href="https://www.fujieace.com/kali-linux/courses/wfuzz-2.html" target="_blank" rel="noopener">https://www.fujieace.com/kali-linux/courses/wfuzz-2.html</a><br>作者：付杰<br>链接：<a href="https://www.secpulse.com/archives/78638.html" target="_blank" rel="noopener">https://www.secpulse.com/archives/78638.html</a><br>作者：key</p>
+<p>wfuzz手册三部曲</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" rel="tag"># 渗透测试</a>
+              <a href="/tags/%E5%B7%A5%E5%85%B7/" rel="tag"># 工具</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/04/05/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/" rel="prev" title="web渗透笔记之文件上传漏洞">
+      <i class="fa fa-chevron-left"></i> web渗透笔记之文件上传漏洞
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/05/12/python%E5%AE%89%E5%85%A8%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/" rel="next" title="python安全编程学习">
+      python安全编程学习 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#相关命令"><span class="nav-number">1.</span> <span class="nav-text">相关命令</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#使用Baseline-基准线"><span class="nav-number">1.0.0.1.</span> <span class="nav-text">使用Baseline(基准线)</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#示例"><span class="nav-number">2.</span> <span class="nav-text">示例</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#引用"><span class="nav-number">2.1.</span> <span class="nav-text">引用</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

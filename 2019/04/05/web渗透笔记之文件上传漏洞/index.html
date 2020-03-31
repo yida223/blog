@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="转载  前端代码  逻辑绕过">
+<meta property="og:type" content="article">
+<meta property="og:title" content="web渗透笔记之文件上传漏洞">
+<meta property="og:url" content="http://yoursite.com/2019/04/05/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="转载  前端代码  逻辑绕过">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/images/pasted-20.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-21.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-22.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-23.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-24.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-25.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-26.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-27.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-44.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-28.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-29.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-30.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-31.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-32.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-33.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-34.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-35.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-36.png">
+<meta property="article:published_time" content="2019-04-05T13:23:00.000Z">
+<meta property="article:modified_time" content="2019-08-09T16:07:28.891Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="渗透测试">
+<meta property="article:tag" content="文件上传">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/images/pasted-20.png">
+
+<link rel="canonical" href="http://yoursite.com/2019/04/05/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>web渗透笔记之文件上传漏洞 | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/05/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          web渗透笔记之文件上传漏洞
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-04-05 21:23:00" itemprop="dateCreated datePublished" datetime="2019-04-05T21:23:00+08:00">2019-04-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-08-10 00:07:28" itemprop="dateModified" datetime="2019-08-10T00:07:28+08:00">2019-08-10</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B8%97%E9%80%8F%E4%B9%8B%E8%B7%AF/" itemprop="url" rel="index"><span itemprop="name">渗透之路</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><strong>转载</strong></p>
+<ol>
+<li><p>前端代码</p>
+</li>
+<li><p>逻辑绕过</p>
+<a id="more"></a></li>
+<li><p>文件内容检测</p>
+</li>
+<li><p>文件包含、文件备份</p>
+</li>
+<li><p>容器及语言特性</p>
+</li>
+<li><p>畸形报文</p>
+</li>
+<li><p>系统特性</p>
+</li>
+<li><p>SQLI方面</p>
+</li>
+</ol>
+<p><strong>上传文件时WAF检测点：</strong></p>
+<p>1）请求的url，url是否合法</p>
+<p>2）Boundary边界，通过Boundary边界确定内容来检测内容</p>
+<p>3）MIME类型，即content-type</p>
+<p>4）文件扩展名</p>
+<p>5）文件内容</p>
+<p><strong>文件上传后导致的常见安全问题一般有:</strong></p>
+<p>1）上传文件是Web脚本语言，服务器的Web容器解释并执行了用户上传的脚本，导致代码执行。</p>
+<p>2）上传文件是Flash的策略文件crossdomain.xml，黑客用以控制Flash在该域下的行为（其他通过类似方式控制策略文件的情况类似);</p>
+<p>3）上传文件是病毒、木马文件，黑客用以诱骗用户或者管理员下载执行。</p>
+<p>4）上传文件是钓鱼图片或为包含了脚本的图片，在某些版本的浏览器中会被作为脚本执行，被用于钓鱼和欺诈。</p>
+<p>本文重点是web层面的web shell</p>
+<p>需要注意的要点：</p>
+<p>1）上传后的路径在哪里</p>
+<p>2）上传后的文件名是否被修改了</p>
+<h2 id="前端代码绕过"><a href="#前端代码绕过" class="headerlink" title="前端代码绕过"></a>前端代码绕过</h2><p>主要是通过前端的JavaScript进行过滤，可以十分简单地绕过。如正常发包，之后抓包修改。</p>
+<h2 id="逻辑绕过"><a href="#逻辑绕过" class="headerlink" title="逻辑绕过"></a>逻辑绕过</h2><h4 id="2-1MIME检测"><a href="#2-1MIME检测" class="headerlink" title="2.1MIME检测"></a>2.1MIME检测</h4><ul>
+<li>后台代码通过检测客户端请求报文中的Content-Type字段来判断文件类型.，可以先上传正常文件再修改文件内容与文件名进行绕过。</li>
+<li>各类文件的mime类型，百度即可，此处不列举。</li>
+</ul>
+<h4 id="2-2文件后缀检测"><a href="#2-2文件后缀检测" class="headerlink" title="2.2文件后缀检测"></a>2.2文件后缀检测</h4><p>逻辑不严谨，过滤不严谨，导致被绕过</p>
+<ol>
+<li><p>采用黑名单，简单地过滤了“php”，但通过大小写的方式可以绕过WAF；或是替换了php等关键字符，通过双写 pphphp 即可绕过，这种简单的过滤方式可以通过上传之后查看文件名来判断。</p>
+</li>
+<li><p>没有过滤.htacess文件上传。这时可以借助.htaccess文件来上传恶意代码并解析。如：上传一个.htaccess文件，内容为AddTypeapplication/x-httpd-php .jpg，上传的jpg文件就可以当作php来解析  </p>
+<ul>
+<li>新建一个.htaccess 文件，里面的内容如下：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;FilesMatch &quot;pino&quot;&gt; SetHandler application&#x2F;x-httpd-php &lt;&#x2F;FilesMatch&gt;</span><br></pre></td></tr></table></figure>
+这个时候就上传一个文件名字是pino，这个时候我们上传一个文件名字叫做pino的文件，不要后缀名，然后里面是一句话木马，用菜刀连接，可以成功！</li>
+</ul>
+</li>
+<li><p>没有过滤掉可以被解析的.asa、.cdx、.cer等，所以还应该使用白名单来防御。</p>
+</li>
+</ol>
+<h4 id="2-3-二次上传"><a href="#2-3-二次上传" class="headerlink" title="2.3 二次上传"></a>2.3 二次上传</h4><p>主要是代码的逻辑漏洞，用户上传一次文件后，网站系统就设置允许用户下一次的上传，不再对用户的上传文件进行检测，这个比较奇葩。</p>
+<h2 id="文件内容检测"><a href="#文件内容检测" class="headerlink" title="文件内容检测"></a>文件内容检测</h2><ol>
+<li><p>通过检测文件内容是否含有正常文件的一些关键字符</p>
+</li>
+<li><p>是否含有恶意代码</p>
+</li>
+<li><p>检测文件的大小，如果文件太小了或是太大了都可能上传失败。可以添加一些无用的字符来增加文件的大小。</p>
+</li>
+</ol>
+<p>针对（1），我们可以在文件之中添加一些相应文件的标识，如下表；<br>|类型| 标识 |<br>|–|–|<br>|JPEG  | 头标识 ff d8 ,结束标识 ff d9 |<br>|PNG | 头标识89 50 4E 47 0D 0A 1A 0A|<br>|GIF|头标识 (6 bytes) 47 49 46 38 39(37) 61 GIF89(7)a|<br>|BMP|头标识 (2 bytes) 42 4D BM|</p>
+<p>或是使用windows下的copy命令来将.php文件内容附加到正常的.png文件，合成后的文件后缀名根据情况修改。</p>
+<ul>
+<li><p>假设选择我的图片是：1.jpg</p>
+</li>
+<li><p>一句话是：2.php</p>
+</li>
+<li><p>命令：<code>copy 1.jpg/b+2.php/a 1.jpg</code></p>
+<h2 id="文件包含、文件备份"><a href="#文件包含、文件备份" class="headerlink" title="文件包含、文件备份"></a>文件包含、文件备份</h2></li>
+<li><p>假如网站存在文件包含漏洞，可利用文件包含 来包含任意文件，如包含png文件解析一句话木马。</p>
+</li>
+<li><p>有的网站存在文件备份，数据库备份等一些可以利用的功能，如将.doc文件备份为.php文件，这些都是需要细心注意的。</p>
+<h2 id="容器及语言特性"><a href="#容器及语言特性" class="headerlink" title="容器及语言特性"></a>容器及语言特性</h2><pre><code>PHP   版本 &lt;5.3.4</code></pre></li>
+<li><p>据说是因为PHP沿用了C语言空字符截断的特性，官方认为这不是一个漏洞，但最后还是修改了。截断漏洞的发生是有条件的。</p>
+</li>
+<li><p>首先需要知道，在代码层面，假如“文件名不分离”，截断是无法作用的。比如，filename=hack.php%00.gif，PHP代码拿到的文件名是hack.php。但是，有的程序员可能会写下  $_FILES[ ‘uploaded’ ][‘name’ ].’png’之类的代码导，也不检查文件名，就导致漏洞的发生。</p>
+</li>
+<li><p>假如不是在代码层面上检测上传的文件名，这个检测者 WAF 拿到的文件名就是 hack.php%00.gif，它认为%00是正常字符串，然后漏洞就发生了。</p>
+</li>
+<li><p>最后一点，在使用截断%00时需要urlencode 一下。</p>
+</li>
+</ul>
+<h5 id="Apache解析漏洞（Apache1-x-2-x）"><a href="#Apache解析漏洞（Apache1-x-2-x）" class="headerlink" title="Apache解析漏洞（Apache1.x 2.x）"></a>Apache解析漏洞（Apache1.x 2.x）</h5><p>文件名解析漏洞，遇到不认识的后缀类型会忽略并继续向前寻找后缀来解析，比如a.php.gif或a.php.aaa</p>
+<h5 id="IIS-6-0-IIS-5-X"><a href="#IIS-6-0-IIS-5-X" class="headerlink" title="IIS 6.0/IIS 5.X"></a>IIS 6.0/IIS 5.X</h5><ol>
+<li>目录名，包含 .asp.asa .cer，则该目录下的文件都将被解析为 .asp文件</li>
+<li>文件名中，分号本身以及后面的都会被系统忽略 a.asp;.gif</li>
+<li>文件名，文件后缀名字中为.asp .asa .cer,cdx 之一，都会被解析为 .asp文件</li>
+</ol>
+<h5 id="Nginx-lt-8-03-空字节代码执行漏洞"><a href="#Nginx-lt-8-03-空字节代码执行漏洞" class="headerlink" title="Nginx &lt;8.03 空字节代码执行漏洞"></a>Nginx &lt;8.03 空字节代码执行漏洞</h5><ol>
+<li>版本 0.5.* |0.6.* | 0.7 - 0.7.65 |  0.8 - 0.8.37<br>利用0截断，如shell.jpg%00.php<br>访问以下网址，服务器将把xx.jpg文件当做php解析并执行。<br><a href="http://www.xxx.com/xx.jpg%00.php" target="_blank" rel="noopener">http://www.xxx.com/xx.jpg%00.php</a></li>
+<li>版本0.8.41-1.5.6<br>利用0截断，如shell.png%20%00.php</li>
+</ol>
+<h5 id="IIS-7-0-IIS-7-5-Nginx-lt-0-8-3畸形解析漏洞"><a href="#IIS-7-0-IIS-7-5-Nginx-lt-0-8-3畸形解析漏洞" class="headerlink" title="IIS 7.0/IIS 7.5/ Nginx &lt;0.8.3畸形解析漏洞"></a>IIS 7.0/IIS 7.5/ Nginx &lt;0.8.3畸形解析漏洞</h5><p>PHP CGI解析漏洞<br>在默认Fast-CGI开启状况下，访问以下网址，服务器将把xx.jpg文件当做php解析并执行。</p>
+<p><a href="http://www.xxx.com/xx.jpg/.php" target="_blank" rel="noopener">http://www.xxx.com/xx.jpg/.php</a></p>
+<h5 id="CVE-2013-4547-Nginx解析漏洞"><a href="#CVE-2013-4547-Nginx解析漏洞" class="headerlink" title="CVE-2013-4547 Nginx解析漏洞"></a>CVE-2013-4547 Nginx解析漏洞</h5><p><a href="http://www.xxx.com/a.jpg%00\0.php" target="_blank" rel="noopener">http://www.xxx.com/a.jpg%00\0.php</a></p>
+<h2 id="畸形报文"><a href="#畸形报文" class="headerlink" title="畸形报文"></a>畸形报文</h2><p>WAF对报文格式过于信任，没有处理这类问题，可能导致被绕过。</p>
+<h5 id="Multi-Content-Disposition："><a href="#Multi-Content-Disposition：" class="headerlink" title="Multi Content-Disposition："></a>Multi Content-Disposition：</h5><p>在IIS的环境下，上传文件时如果存在多个Content-Disposition的话，IIS会取第一个<br>Content-Disposition中的值作为接收参数，而如果waf只是取最后一个的话便会被绕过。</p>
+<p><img src="/images/pasted-20.png" alt="upload successful"></p>
+<h5 id="请求正文格式问题"><a href="#请求正文格式问题" class="headerlink" title="请求正文格式问题"></a>请求正文格式问题</h5><ol>
+<li>顺序</li>
+</ol>
+<blockquote>
+<p>Content-Disposition: form-data; name=”file1”;filename=”shell.asp”<br>Content-Type: application/octet-stream</p>
+</blockquote>
+<p>正常的upload请求都是以上这样，然而这个格式也并非强制性的，在IIS6.0下如果我们换一种书写方式，把filename放在其他地方：</p>
+<p><img src="/images/pasted-21.png" alt="upload successful"><br>2. 插入特殊字符<br> 一个空格导致安全狗被绕过：<br>Win + IIS6.0 + ASP</p>
+<p><img src="/images/pasted-22.png" alt="upload successful"><br>边界多了两横杠导致，边界匹配不成功<br>Win2k3 + IIS6.0 + ASP</p>
+<p><img src="/images/pasted-23.png" alt="upload successful"><br>3. 长度</p>
+<p>数据过长导致的绕过：<br>waf如果对Content-Disposition长度处理的不够好的话可能会导致绕过，例如：</p>
+<p><img src="/images/pasted-24.png" alt="upload successful"><br>基于构造长文件名，需要文件被重命名。</p>
+<p><img src="/images/pasted-25.png" alt="upload successful"></p>
+<p><img src="/images/pasted-26.png" alt="upload successful"><br>特殊的长文件名，文件名使用非字母数字，比如中文等最大程度的拉长，不行的话再结合一下其他的特性进行测试：</p>
+<p>shell.asp;王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王.jpg</p>
+<h5 id="文件覆盖"><a href="#文件覆盖" class="headerlink" title="文件覆盖"></a>文件覆盖</h5><p>php环境下， 开发者没有意识到一个请求包可能包含“两个文件”，开发者虽然对前面一个进行了十分严格的检测，但是最后一个文件可以覆盖掉前面的文件。如前面文件为 image/gif . xx.gjf，但后面跟了一个  image/gif  xx.php，最终保存的只是后面一个。<br>下面是一个请求包的示例。</p>
+<p><img src="/images/pasted-27.png" alt="upload successful"><br>在畸形报文方面，大家应该天马行空地想象，大胆尝试。</p>
+<h2 id="系统特性"><a href="#系统特性" class="headerlink" title="系统特性"></a>系统特性</h2><p> Windows特殊字符：</p>
+<p><img src="/images/pasted-44.png" alt="upload successful"></p>
+<p>Win+ IIS7.0 + PHP</p>
+<p><img src="/images/pasted-28.png" alt="upload successful"><br><strong>NTFS ADS特性：</strong></p>
+<p>ADS是NTFS磁盘格式的一个特性，用于NTFS交换数据流。在上传文件时，如果waf对请求正文的filename匹配不当的话可能会导致绕过。</p>
+<p><img src="/images/pasted-29.png" alt="upload successful"><br>Windows在创建文件时，在文件名末尾不管加多少点都会自动去除，那么上传时filename可以这么写shell.php……也可以这么写shell.php::$DATA…….。</p>
+<p>Win+ IIS7.0 + PHP</p>
+<p><img src="/images/pasted-30.png" alt="upload successful"></p>
+<h2 id="SQLI方面"><a href="#SQLI方面" class="headerlink" title="SQLI方面"></a>SQLI方面</h2><p>   SQLI漏洞利用</p>
+<p>用SQLI漏洞直接写入文件，需要满足四个条件，要求高</p>
+<ol>
+<li><p>写的权限，通常为 dba权限方可</p>
+</li>
+<li><p>单引号或双引号没有被过滤，因为文件名必须要用它们括起来</p>
+</li>
+<li><p>知道网站在服务器中的绝对路径</p>
+</li>
+<li><p>文件名不能重复，不算条件的条件</p>
+</li>
+</ol>
+<p>例如：select0xaaaa into outfile “/var/www/html/shell.php”</p>
+<p>遇到一些网站虽然有写的权限，但是由于写入的文件名必须要带单引号或是双引号（无法用十六进制的方式），导致无法写入，这也是蛋疼的地方。本人暂时不知道有没有什么办法绕过。</p>
+<h5 id="phpmyadmin"><a href="#phpmyadmin" class="headerlink" title="phpmyadmin"></a>phpmyadmin</h5><p>假如发现并进入phpmyadmin后台，也可以尝试拿shell，不过还是要知道网站的据对路径信息。</p>
+<p>1）利用SQL执行来写入一句话到网站后台中。</p>
+<p><img src="/images/pasted-31.png" alt="upload successful"></p>
+<p>如果网站的my.ini文件中没有包含“<code>secure_file_priv=</code>”这句话，就会提示如下错误信息。</p>
+<p><img src="/images/pasted-32.png" alt="upload successful"></p>
+<p>如果提示写入失败可以尝试其他目录，多试试，名字为uploads等的目录能够被写的可能性更高。</p>
+<p><img src="/images/pasted-33.png" alt="upload successful"></p>
+<p>2）通过日志来GetShell</p>
+<p>选择变量功能</p>
+<p><img src="/images/pasted-34.png" alt="upload successful"><br>搜索关键字 log 找到，下面两个东西，将”generallog”编辑为“ON”，且修改 “general log file”位置为网站的绝对路径</p>
+<p><img src="/images/pasted-35.png" alt="upload successful"></p>
+<p>之后在“SQL”执行功能中输入一句话并执行就OK了，log将记录这一句话。</p>
+<p><img src="/images/pasted-36.png" alt="upload successful"></p>
+<h2 id="竞争条件上传"><a href="#竞争条件上传" class="headerlink" title="竞争条件上传"></a>竞争条件上传</h2><p>有时木马上传会被waf查杀，但waf查杀木马需要时间。所以如果上传的文件命令是生成一个新的木马时，则可能绕过<br>具体做法是：</p>
+<blockquote>
+<p>文件上传后马上访问此文件，使得在未被查杀前生成一个新的木马，新的木马不在检测范围之内，于是成功绕过</p>
+</blockquote>
+<h1 id="开源编辑器上传漏洞"><a href="#开源编辑器上传漏洞" class="headerlink" title="开源编辑器上传漏洞"></a>开源编辑器上传漏洞</h1><h4 id="fckeditor"><a href="#fckeditor" class="headerlink" title="fckeditor"></a>fckeditor</h4><p>博客内容转自：<a href="https://mp.weixin.qq.com/s?__biz=MzU1MzE3Njg2Mw==&amp;mid=2247483678&amp;idx=1&amp;sn=3be9bad41fd1b0f405f8323073ce415b&amp;chksm=fbf79b6ecc801278abcfb113a2bbf02d97f8a04645cffa7ab3a98e05de38101132a14dfce38e&amp;mpshare=1&amp;scene=23&amp;srcid=0403E5T7waRwwBC04A9sExdv#rd" target="_blank" rel="noopener">https://mp.weixin.qq.com/s?__biz=MzU1MzE3Njg2Mw==&amp;mid=2247483678&amp;idx=1&amp;sn=3be9bad41fd1b0f405f8323073ce415b&amp;chksm=fbf79b6ecc801278abcfb113a2bbf02d97f8a04645cffa7ab3a98e05de38101132a14dfce38e&amp;mpshare=1&amp;scene=23&amp;srcid=0403E5T7waRwwBC04A9sExdv#rd</a></p>
+<h1 id="文件上传漏洞修复"><a href="#文件上传漏洞修复" class="headerlink" title="文件上传漏洞修复"></a>文件上传漏洞修复</h1><ol>
+<li><p>服务器配置不当<br>重新配置好服务器。<br>服务器PUT方法配置不当可参见HTTP请求方法（PUT）。</p>
+</li>
+<li><p>开源编辑器上传漏洞<br>若新版编辑器已修复漏洞，请更新编辑器版本。</p>
+</li>
+<li><p>本地文件上传限制被绕过<br>在服务器后端对上传的文件进行过滤。</p>
+</li>
+<li><p>过滤不严或被绕过<br>建议使用白名单的方法对文件进行过滤。</p>
+</li>
+<li><p>文件解析漏洞导致文件执行<br>升级web服务器版本或安装相应的官方补丁。</p>
+</li>
+<li><p>文件路径截断<br>使用随机数改写文件名和文件路径,不要使用用户定义的文件名和文件路径。</p>
+</li>
+</ol>
+<p>除了以上的方法之外，还可将被上传的文件限制在某一路径下，并在文件上传目录禁止脚本解析。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" rel="tag"># 渗透测试</a>
+              <a href="/tags/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/" rel="tag"># 文件上传</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/04/03/eb%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bxss%E6%BC%8F%E6%B4%9E/" rel="prev" title="web渗透笔记之xss漏洞">
+      <i class="fa fa-chevron-left"></i> web渗透笔记之xss漏洞
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/04/09/%E5%B7%A5%E5%85%B7wfuzz%E7%9A%84%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="next" title="爆破工具wfuzz的使用笔记">
+      爆破工具wfuzz的使用笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#前端代码绕过"><span class="nav-number">1.</span> <span class="nav-text">前端代码绕过</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#逻辑绕过"><span class="nav-number">2.</span> <span class="nav-text">逻辑绕过</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-1MIME检测"><span class="nav-number">2.0.1.</span> <span class="nav-text">2.1MIME检测</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2文件后缀检测"><span class="nav-number">2.0.2.</span> <span class="nav-text">2.2文件后缀检测</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-3-二次上传"><span class="nav-number">2.0.3.</span> <span class="nav-text">2.3 二次上传</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件内容检测"><span class="nav-number">3.</span> <span class="nav-text">文件内容检测</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件包含、文件备份"><span class="nav-number">4.</span> <span class="nav-text">文件包含、文件备份</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#容器及语言特性"><span class="nav-number">5.</span> <span class="nav-text">容器及语言特性</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Apache解析漏洞（Apache1-x-2-x）"><span class="nav-number">5.0.0.1.</span> <span class="nav-text">Apache解析漏洞（Apache1.x 2.x）</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IIS-6-0-IIS-5-X"><span class="nav-number">5.0.0.2.</span> <span class="nav-text">IIS 6.0&#x2F;IIS 5.X</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Nginx-lt-8-03-空字节代码执行漏洞"><span class="nav-number">5.0.0.3.</span> <span class="nav-text">Nginx &lt;8.03 空字节代码执行漏洞</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IIS-7-0-IIS-7-5-Nginx-lt-0-8-3畸形解析漏洞"><span class="nav-number">5.0.0.4.</span> <span class="nav-text">IIS 7.0&#x2F;IIS 7.5&#x2F; Nginx &lt;0.8.3畸形解析漏洞</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#CVE-2013-4547-Nginx解析漏洞"><span class="nav-number">5.0.0.5.</span> <span class="nav-text">CVE-2013-4547 Nginx解析漏洞</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#畸形报文"><span class="nav-number">6.</span> <span class="nav-text">畸形报文</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Multi-Content-Disposition："><span class="nav-number">6.0.0.1.</span> <span class="nav-text">Multi Content-Disposition：</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#请求正文格式问题"><span class="nav-number">6.0.0.2.</span> <span class="nav-text">请求正文格式问题</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#文件覆盖"><span class="nav-number">6.0.0.3.</span> <span class="nav-text">文件覆盖</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#系统特性"><span class="nav-number">7.</span> <span class="nav-text">系统特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SQLI方面"><span class="nav-number">8.</span> <span class="nav-text">SQLI方面</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#phpmyadmin"><span class="nav-number">8.0.0.1.</span> <span class="nav-text">phpmyadmin</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#竞争条件上传"><span class="nav-number">9.</span> <span class="nav-text">竞争条件上传</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#开源编辑器上传漏洞"><span class="nav-number"></span> <span class="nav-text">开源编辑器上传漏洞</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#fckeditor"><span class="nav-number">0.0.1.</span> <span class="nav-text">fckeditor</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#文件上传漏洞修复"><span class="nav-number"></span> <span class="nav-text">文件上传漏洞修复</span></a></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

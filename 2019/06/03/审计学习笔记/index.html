@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.2","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="0x01 PHP核心配置讲解PHP_INI_*常量的定义 PHP_INI_USER该配置可在用户的PHP脚本或window注册表设置">
+<meta property="og:type" content="article">
+<meta property="og:title" content="代码审计学习笔记">
+<meta property="og:url" content="http://yoursite.com/2019/06/03/%E5%AE%A1%E8%AE%A1%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="yida223&#39; blog">
+<meta property="og:description" content="0x01 PHP核心配置讲解PHP_INI_*常量的定义 PHP_INI_USER该配置可在用户的PHP脚本或window注册表设置">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-06-03T13:49:00.000Z">
+<meta property="article:modified_time" content="2019-08-09T16:05:44.237Z">
+<meta property="article:author" content="yida223">
+<meta property="article:tag" content="php">
+<meta property="article:tag" content="代码审计">
+<meta property="article:tag" content="java">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2019/06/03/%E5%AE%A1%E8%AE%A1%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>代码审计学习笔记 | yida223' blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">yida223' blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/03/%E5%AE%A1%E8%AE%A1%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yida223">
+      <meta itemprop="description" content="路漫漫其修远兮，吾将上下而求索">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="yida223' blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          代码审计学习笔记
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-06-03 21:49:00" itemprop="dateCreated datePublished" datetime="2019-06-03T21:49:00+08:00">2019-06-03</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2019-08-10 00:05:44" itemprop="dateModified" datetime="2019-08-10T00:05:44+08:00">2019-08-10</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/" itemprop="url" rel="index"><span itemprop="name">代码审计</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="0x01-PHP核心配置讲解"><a href="#0x01-PHP核心配置讲解" class="headerlink" title="0x01 PHP核心配置讲解"></a>0x01 PHP核心配置讲解</h1><h4 id="PHP-INI-常量的定义"><a href="#PHP-INI-常量的定义" class="headerlink" title="PHP_INI_*常量的定义"></a>PHP_INI_*常量的定义</h4><ul>
+<li>PHP_INI_USER<br>该配置可在用户的PHP脚本或window注册表设置<a id="more"></a></li>
+<li>PHP_INI_PERDIR<br>该配置可在php.ini .htaccess或httpd.conf中设置</li>
+<li>PHP_INI _SYSTEM<br>该配置可在php.ini 或httpd.conf中设置</li>
+</ul>
+<ul>
+<li>PHP_INI _ALL<br>该配置可在任何地方设置</li>
+<li>PHP.INI ONLY<br>该配置仅可在php.ini中设置</li>
+</ul>
+<h4 id="register-globals-全局变量注册开关"><a href="#register-globals-全局变量注册开关" class="headerlink" title="register_globals(全局变量注册开关)"></a>register_globals(全局变量注册开关)</h4><ul>
+<li>设置为on的情况下，会直接把用户GET,POST等方式提交上来的参数设置为全局变量并初始化为参数对应的值，使得提交参数可以直接在脚本中使用</li>
+<li>php版本小于等于4.2.3时设置为on，5.3.0被废弃，php版本5.4.0时移除该项<h4 id="allow-url-include-是否允许包含远程文件"><a href="#allow-url-include-是否允许包含远程文件" class="headerlink" title="allow_url_include(是否允许包含远程文件)"></a>allow_url_include(是否允许包含远程文件)</h4></li>
+<li>当存在include(<code>$var</code>)且<code>$var</code>可控时，可直接控制<code>$var</code>变量来执行php代码。此配置在php5.2.0后默认关闭。与之类似配置有allow_url_fopen，配置是否允许打开远程文件<h4 id="magic-quotes-gpc-魔术引号自动过滤"><a href="#magic-quotes-gpc-魔术引号自动过滤" class="headerlink" title="magic_quotes_gpc(魔术引号自动过滤)"></a>magic_quotes_gpc(魔术引号自动过滤)</h4></li>
+<li>配置为on时，会自动在GET,POST,COOKIE变量中的 (单引号)’ 、(双引号)” 、(反斜杠) \ 、空字符(NULL)的前面加上反斜杠()</li>
+</ul>
+<p><strong>但php5中的magic_quotes_gpc不会过滤$_SERVER变量，导致client-ip、referer一类漏洞能够利用（如XFF注入）</strong></p>
+<ul>
+<li>PHP5.3后不推荐使用，PHP5.4后被取消<h4 id="magic-quotes-runtime-魔术引号自动过滤"><a href="#magic-quotes-runtime-魔术引号自动过滤" class="headerlink" title="magic_quotes_runtime(魔术引号自动过滤)"></a>magic_quotes_runtime(魔术引号自动过滤)</h4></li>
+<li>与前面一个函数相似，但区别是它只对从数据库或文件中获取的数据进行过滤，同样在PHP5,4后取消<h4 id="magic-quotes-sybase-魔术引号自动过滤"><a href="#magic-quotes-sybase-魔术引号自动过滤" class="headerlink" title="magic_quotes_sybase(魔术引号自动过滤)"></a>magic_quotes_sybase(魔术引号自动过滤)</h4></li>
+<li>为on时，会覆盖magic_quotes_gpc的配置，与gpc配置类似，但此配置仅仅转义空字符和把单引号变成双引号，也在5.4版本移除</li>
+</ul>
+<h4 id="safe-mode-安全模式"><a href="#safe-mode-安全模式" class="headerlink" title="safe_mode(安全模式)"></a>safe_mode(安全模式)</h4><ul>
+<li>一种安全机制，php5.4后取消</li>
+<li>为on时<ul>
+<li>所有文件操作函数（如unlink()、file()、include()）等都受限制</li>
+<li>通过函数popen()，system()以及exec()等函数执行命令或程序会提示错误<h4 id="open-basedir-PHP可访问目录"><a href="#open-basedir-PHP可访问目录" class="headerlink" title="open_basedir PHP可访问目录"></a>open_basedir PHP可访问目录</h4></li>
+</ul>
+</li>
+<li>用来限制php只能访问哪些目录，若需加载外部脚本，需把脚本路径加到open_basedir指令中，多个目录以分号分割，例如：open_basedir=/www/a/</li>
+<li>在&lt;=php5.2.3时是PHP_INI _SYSTEM,大于时为PHP_INI _ALL<h4 id="disable-function（禁用函数）"><a href="#disable-function（禁用函数）" class="headerlink" title="disable_function（禁用函数）"></a>disable_function（禁用函数）</h4></li>
+<li>禁用一些敏感函数使用，配置范围是php.ini only<h4 id="display-errors和error-reporting错误显示"><a href="#display-errors和error-reporting错误显示" class="headerlink" title="display_errors和error_reporting错误显示"></a>display_errors和error_reporting错误显示</h4></li>
+<li>第一个表示是否显示php脚本内部错误，为on时，还可配置指令error_reporting，这个选项用来配置错误显示的级别<h1 id="审计辅助工具"><a href="#审计辅助工具" class="headerlink" title="审计辅助工具"></a>审计辅助工具</h1><h5 id="代码编辑器"><a href="#代码编辑器" class="headerlink" title="代码编辑器"></a>代码编辑器</h5></li>
+<li>notepad++<h5 id="代码审计工具"><a href="#代码审计工具" class="headerlink" title="代码审计工具"></a>代码审计工具</h5></li>
+<li>Seay源代码审计系统(php)</li>
+<li>Fortify SCA(收费的，但是支持最多编程语言的审计软件)</li>
+<li>RIPS（php）<br>……</li>
+<li>除此之外的审计工具在小迪写的文章里总结的比较好<br><a href="https://t.zsxq.com/fMfuNJa" target="_blank" rel="noopener">https://t.zsxq.com/fMfuNJa</a></li>
+</ul>
+<h1 id="审计思路"><a href="#审计思路" class="headerlink" title="审计思路"></a>审计思路</h1><ol>
+<li>根据敏感关键词回溯参数传递过程</li>
+<li>查找可控变量，正向追踪变量传递过程</li>
+<li>寻找敏感功能点，通读功能点代码</li>
+<li>直接通读全文代码</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/php/" rel="tag"># php</a>
+              <a href="/tags/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/" rel="tag"># 代码审计</a>
+              <a href="/tags/java/" rel="tag"># java</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/05/12/python%E5%AE%89%E5%85%A8%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/" rel="prev" title="python安全编程学习">
+      <i class="fa fa-chevron-left"></i> python安全编程学习
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/07/31/%E5%BA%94%E6%80%A5%E5%93%8D%E5%BA%94%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="next" title="应急响应学习笔记">
+      应急响应学习笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#0x01-PHP核心配置讲解"><span class="nav-number">1.</span> <span class="nav-text">0x01 PHP核心配置讲解</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#PHP-INI-常量的定义"><span class="nav-number">1.0.0.1.</span> <span class="nav-text">PHP_INI_*常量的定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#register-globals-全局变量注册开关"><span class="nav-number">1.0.0.2.</span> <span class="nav-text">register_globals(全局变量注册开关)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#allow-url-include-是否允许包含远程文件"><span class="nav-number">1.0.0.3.</span> <span class="nav-text">allow_url_include(是否允许包含远程文件)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#magic-quotes-gpc-魔术引号自动过滤"><span class="nav-number">1.0.0.4.</span> <span class="nav-text">magic_quotes_gpc(魔术引号自动过滤)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#magic-quotes-runtime-魔术引号自动过滤"><span class="nav-number">1.0.0.5.</span> <span class="nav-text">magic_quotes_runtime(魔术引号自动过滤)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#magic-quotes-sybase-魔术引号自动过滤"><span class="nav-number">1.0.0.6.</span> <span class="nav-text">magic_quotes_sybase(魔术引号自动过滤)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#safe-mode-安全模式"><span class="nav-number">1.0.0.7.</span> <span class="nav-text">safe_mode(安全模式)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#open-basedir-PHP可访问目录"><span class="nav-number">1.0.0.8.</span> <span class="nav-text">open_basedir PHP可访问目录</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#disable-function（禁用函数）"><span class="nav-number">1.0.0.9.</span> <span class="nav-text">disable_function（禁用函数）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#display-errors和error-reporting错误显示"><span class="nav-number">1.0.0.10.</span> <span class="nav-text">display_errors和error_reporting错误显示</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#审计辅助工具"><span class="nav-number">2.</span> <span class="nav-text">审计辅助工具</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#代码编辑器"><span class="nav-number">2.0.0.0.1.</span> <span class="nav-text">代码编辑器</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#代码审计工具"><span class="nav-number">2.0.0.0.2.</span> <span class="nav-text">代码审计工具</span></a></li></ol></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#审计思路"><span class="nav-number">3.</span> <span class="nav-text">审计思路</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yida223</p>
+  <div class="site-description" itemprop="description">路漫漫其修远兮，吾将上下而求索</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yida223</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动-->
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
